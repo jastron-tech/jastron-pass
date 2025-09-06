@@ -45,17 +45,17 @@ public struct TicketPurchased has copy, drop {
 public fun buy_ticket_from_organizer(
     activity: &mut Activity,
     organizer_profile: &OrganizerProfile,
-    payment: &mut Coin<SUI>,
+    payment: Coin<SUI>,
     buyer_profile: &UserProfile,
     ctx: &mut TxContext,
 ) {
     let ticket_price = activity::get_ticket_price(activity);
-    
+    let payment_value = coin::value(&payment);
     assert!(
         activity::get_organizer_profile_id(activity) == organizer::get_profile_id(organizer_profile),
         EOrganizerProfileMismatch,
     );
-    assert!(coin::value(payment) >= ticket_price, ENotEnoughBalance);
+    assert!(payment_value >= ticket_price, ENotEnoughBalance);
     assert!(activity::has_available_tickets(activity), ENotEnoughTickets);
 
     let activity_id = activity::get_id(activity);
@@ -65,13 +65,11 @@ public fun buy_ticket_from_organizer(
     let ticket = ticket::new(activity_id, ctx);
     let ticket_id = ticket::get_id(&ticket);
 
-    let payment_for_organizer = coin::split(payment, ticket_price, ctx);
-    
-    transfer::public_transfer(payment_for_organizer, payment_receiver);
+    transfer::public_transfer(payment, payment_receiver);
     event::emit(PaymentTransferred {
         activity_id,
         receiver: payment_receiver,
-        amount: ticket_price,
+        amount: payment_value,
         transferred_at: tx_context::epoch(ctx),
     });
 
