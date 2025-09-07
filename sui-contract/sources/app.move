@@ -19,11 +19,8 @@ const ENotEnoughBalance: u64 = 1 + EApp;
 const ENotEnoughTickets: u64 = 2 + EApp;
 const EOrganizerProfileMismatch: u64 = 3 + EApp;
 const EInvalidPrice: u64 = 4 + EApp;
-//const ETransferRuleViolation: u64 = 5 + EApp;
-//const ENotKioskOwner: u64 = 6 + EApp;
-//const EItemNotListed: u64 = 7 + EApp;
-//const EItemIsListedExclusively: u64 = 8 + EApp;
-const EResellPriceLimitExceeded: u64 = 9 + EApp;
+const EItemNotListed: u64 = 5 + EApp;
+const EResellPriceLimitExceeded: u64 = 6 + EApp;
 
 //---data types---
 public struct TicketListing has copy, store, drop {
@@ -236,6 +233,7 @@ public fun purchase_ticket(
 }
 
 public fun get_ticket_price(kiosk: &Kiosk, ticket_id: ID): u64 {
+    assert!(is_ticket_listed(kiosk, ticket_id), EItemNotListed);
     let price = df::borrow<TicketListing, u64>(kiosk.uid(), TicketListing { id: ticket_id });
     *price
 }
