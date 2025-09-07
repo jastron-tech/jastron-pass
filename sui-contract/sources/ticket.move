@@ -1,60 +1,94 @@
 module jastron_pass::ticket;
 
+use jastron_pass::activity::{Activity};
 use sui::event;
-use jastron_pass::user::{Self, UserProfile};
 
 //---errors---
-const ETicket: u64 = 100;
-const EAlreadyRedeemed: u64 = 1 + ETicket;
+//const ETicket: u64 = 500;
 
 //---data types---
-public struct Ticket has key {
+public struct Ticket has key, store {
     id: UID,
     activity_id: ID,
-    created_at: u64,
     redeemed_at: u64,
 }
 
+public struct ProtectedTicket has key {
+    id: UID,
+    ticket: Ticket
+}
+
 //---events---
-public struct TicketCreated has copy, drop {
-    ticket_id: ID,
+public struct TicketMinted has copy, drop {
     activity_id: ID,
+    ticket_id: ID,
     created_at: u64,
+    created_by: address,
 }
 
 //---functions---
-public fun transfer(ticket: Ticket, receiver_profile: &UserProfile) {
-    assert!(ticket.redeemed_at == 0, EAlreadyRedeemed);
-    let receiver = user::get_treasury(receiver_profile);
-    transfer::transfer(ticket, receiver);
-}
 
 //---internal functions---
-public(package) fun new(activity_id: ID, ctx: &mut TxContext): Ticket {
+public(package) fun mint(activity_id: &Activity, ctx: &mut TxContext): ProtectedTicket {
+    let caller = tx_context::sender(ctx);
+    let cur_time = tx_context::epoch(ctx);
+    
     let ticket = Ticket {
         id: object::new(ctx),
-        activity_id,
-        created_at: tx_context::epoch(ctx),
+        activity_id: activity_id.get_id(),
         redeemed_at: 0,
     };
-    event::emit(TicketCreated {
-        ticket_id: object::uid_to_inner(&ticket.id),
-        activity_id,
-        created_at: ticket.created_at,
+    let ticket_id = object::uid_to_inner(&ticket.id);
+
+    event::emit(TicketMinted {
+        activity_id: activity_id.get_id(),
+        ticket_id,
+        created_at: cur_time,
+        created_by: caller,
     });
 
+    let protected_ticket = wrap(ticket, ctx);
+    protected_ticket
+}
+
+public(package) fun unwrap(self: ProtectedTicket): Ticket {
+    let ProtectedTicket { id, ticket } = self;
+    object::delete(id);
     ticket
 }
 
+public(package) fun wrap(self: Ticket, ctx: &mut TxContext): ProtectedTicket {
+    ProtectedTicket {
+        id: object::new(ctx),
+        ticket: self
+    }
+}
+
+public(package) fun transfer(self: ProtectedTicket, to: address) {
+    transfer::transfer(self, to);
+}
+
 //---readonly functions---
-public fun get_id(ticket: &Ticket): ID {
-    object::uid_to_inner(&ticket.id)
+public fun get_id(self: &Ticket): ID {
+    object::uid_to_inner(&self.id)
 }
 
-public fun get_activity_id(ticket: &Ticket): ID {
-    ticket.activity_id
+public fun get_activity_id(self: &Ticket): ID {
+    self.activity_id
 }
 
-public fun is_redeemed(ticket: &Ticket): bool {
-    ticket.redeemed_at > 0
+public fun is_redeemed(self: &Ticket): bool {
+    self.redeemed_at > 0
+}
+
+public fun get_inner_id(self: &ProtectedTicket): ID {
+    self.ticket.get_id()
+}
+
+public fun get_inner_activity_id(self: &ProtectedTicket): ID {
+    self.ticket.get_activity_id()
+}
+
+public fun is_inner_redeemed(self: &ProtectedTicket): bool {
+    self.ticket.is_redeemed()
 }

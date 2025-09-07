@@ -1,80 +1,54 @@
 module jastron_pass::organizer;
-
-use jastron_pass::activity;
 use sui::event;
 
 //---errors---
+//const EOrganizer: u64 = 200;
 
 //---events---
-public struct OrganizerRegistered has copy, drop {
+public struct OrganizerProfileCreated has copy, drop {
     profile_id: ID,
-    organizer: address,
-    registered_at: u64,
+    created_by: address,
+    created_at: u64,
 }
 
 //---data types---
-//Owned Object
-public struct OrganizerCap has key {
+public struct OrganizerCap has key, store {
     id: UID,
+    profile_id: ID,
 }
 
-//Shared Object
-public struct OrganizerProfile has key {
+public struct OrganizerProfile has key, store {
     id: UID,
-    treasury: address,
-    registered_at: u64,
+    treasury: address
 }
 
 //---functions---
-public fun register(ctx: &mut TxContext) {
-    let organizer = tx_context::sender(ctx);
+public(package) fun new(ctx: &mut TxContext): (OrganizerProfile, OrganizerCap) {
+    let caller = tx_context::sender(ctx);
     let profile = OrganizerProfile {
         id: object::new(ctx),
-        registered_at: tx_context::epoch(ctx),
-        treasury: organizer,
+        treasury: caller,
     };
 
     let cap = OrganizerCap {
         id: object::new(ctx),
-    };
-    transfer::transfer(cap, organizer);
-
-    // emit registered event
-    event::emit(OrganizerRegistered {
         profile_id: object::uid_to_inner(&profile.id),
-        organizer: organizer,
-        registered_at: profile.registered_at,
+    };
+
+    event::emit(OrganizerProfileCreated {
+        profile_id: object::uid_to_inner(&profile.id),
+        created_by: caller,
+        created_at: tx_context::epoch(ctx),
     });
 
-    transfer::share_object(profile);
-}
-
-public fun create_activity(
-    _cap: &OrganizerCap,
-    organizer_profile: &OrganizerProfile,
-    total_supply: u64,
-    ticket_price: u64,
-    sale_ended_at: u64,
-    ctx: &mut TxContext,
-) {
-    activity::new(
-        total_supply,
-        ticket_price,
-        get_profile_id(organizer_profile),
-        sale_ended_at,
-        ctx,
-    );
+    (profile, cap)
 }
 
 //---readonly functions---
-public fun get_profile_id(profile: &OrganizerProfile): ID {
-    object::uid_to_inner(&profile.id)
+public fun get_profile_id(self: &OrganizerProfile): ID {
+    object::uid_to_inner(&self.id)
 }
 
-public fun get_registered_at(profile: &OrganizerProfile): u64 {
-    profile.registered_at
-}
-
-public fun get_treasury(profile: &OrganizerProfile): address {
-    profile.treasury
+public fun get_treasury(self: &OrganizerProfile): address {
+    self.treasury
 }
