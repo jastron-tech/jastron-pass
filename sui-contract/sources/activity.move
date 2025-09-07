@@ -10,7 +10,8 @@ public struct Activity has key {
     tickets_sold: u64,
     ticket_price: u64, // Price in MIST (1 SUI = 1,000,000,000 MIST)
     organizer_profile_id: ID,
-    created_at: u64
+    created_at: u64,
+    sale_ended_at: u64
 }
 
 //---events---
@@ -28,6 +29,7 @@ public(package) fun new(
     total_supply: u64,
     ticket_price: u64,
     organizer_profile_id: ID,
+    sale_ended_at: u64,
     ctx: &mut TxContext,
 ) {
     let activity = Activity {
@@ -37,6 +39,7 @@ public(package) fun new(
         ticket_price,
         organizer_profile_id,
         created_at: tx_context::epoch(ctx),
+        sale_ended_at,
     };
 
     event::emit(ActivityCreated {

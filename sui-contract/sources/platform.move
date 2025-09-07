@@ -1,26 +1,23 @@
 module jastron_pass::platform;
 
 use jastron_pass::activity::{Self, Activity};
+use jastron_pass::ticket::{Self};
 use jastron_pass::organizer::{Self, OrganizerProfile};
 use jastron_pass::user::{Self, UserProfile};
-use jastron_pass::ticket::{Self};
 use sui::coin::{Self, Coin};
 use sui::event;
 use sui::sui::SUI;
 use sui::package;
 
 //---errors---
-const ENotEnoughBalance: u64 = 0;
-const ENotEnoughTickets: u64 = 1;
-const EOrganizerProfileMismatch: u64 = 2;
+const EPlatform: u64 = 0;
+const ENotEnoughBalance: u64 = 1 + EPlatform;
+const ENotEnoughTickets: u64 = 2 + EPlatform;
+const EOrganizerProfileMismatch: u64 = 3 + EPlatform;
 
 //---data types---
 //witness
 public struct PLATFORM has drop {}
-
-public struct AdminCap has key, store {
-    id: UID,
-}
 
 public struct Platform has key {
     id: UID,
@@ -39,6 +36,8 @@ public struct TicketPurchased has copy, drop {
     ticket_id: ID,
     buyer: address,
     price: u64,
+    paid: u64,
+    num_sold: u64,
 }
 
 //---functions---
@@ -81,20 +80,17 @@ public fun buy_ticket_from_organizer(
         ticket_id,
         buyer: ticket_receiver,
         price: ticket_price,
+        paid: payment_value,
+        num_sold: activity::get_tickets_sold(activity),
     });
 }
 
 fun init(otw: PLATFORM, ctx: &mut TxContext) {
     let platform_publisher = tx_context::sender(ctx);
 
-    let publisher_proof = package::claim(otw, ctx);
-    transfer::public_transfer(publisher_proof, platform_publisher);
+    let publisher = package::claim(otw, ctx);
+    transfer::public_transfer(publisher, platform_publisher);
     
-    let admin_cap = AdminCap {
-        id: object::new(ctx),
-    };
-    transfer::public_transfer(admin_cap, platform_publisher);
-
     let platform = Platform {
         id: object::new(ctx),
     };

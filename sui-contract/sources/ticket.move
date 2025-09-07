@@ -4,6 +4,8 @@ use sui::event;
 use jastron_pass::user::{Self, UserProfile};
 
 //---errors---
+const ETicket: u64 = 100;
+const EAlreadyRedeemed: u64 = 1 + ETicket;
 
 //---data types---
 public struct Ticket has key {
@@ -22,6 +24,7 @@ public struct TicketCreated has copy, drop {
 
 //---functions---
 public fun transfer(ticket: Ticket, receiver_profile: &UserProfile) {
+    assert!(ticket.redeemed_at == 0, EAlreadyRedeemed);
     let receiver = user::get_treasury(receiver_profile);
     transfer::transfer(ticket, receiver);
 }

@@ -54,12 +54,14 @@ public fun create_activity(
     organizer_profile: &OrganizerProfile,
     total_supply: u64,
     ticket_price: u64,
+    sale_ended_at: u64,
     ctx: &mut TxContext,
 ) {
     activity::new(
         total_supply,
         ticket_price,
         get_profile_id(organizer_profile),
+        sale_ended_at,
         ctx,
     );
 }
