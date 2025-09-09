@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SuiDemo } from "@/components/sui-demo";
 
 export default function Home() {
   return (
@@ -60,29 +61,8 @@ export default function Home() {
           </Card>
         </div>
 
-        <div className="max-w-md mx-auto mt-12">
-          <Card>
-            <CardHeader>
-              <CardTitle>Get Started</CardTitle>
-              <CardDescription>
-                Try out the components below
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="Enter your email" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" type="text" placeholder="Enter your name" />
-              </div>
-              <div className="flex gap-2">
-                <Button className="flex-1">Submit</Button>
-                <Button variant="outline" className="flex-1">Cancel</Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="max-w-4xl mx-auto mt-12">
+          <SuiDemo />
         </div>
       </div>
     </div>
