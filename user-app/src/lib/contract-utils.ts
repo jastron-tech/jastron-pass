@@ -7,7 +7,7 @@ export class JastronPassContract {
   private packageId: string;
   private client: ReturnType<typeof getDefaultSuiClient>;
 
-  constructor(packageId: string) {
+  constructor(packageId: string = PACKAGE_ID) {
     this.packageId = packageId;
     this.client = getDefaultSuiClient();
   }
