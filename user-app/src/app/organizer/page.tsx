@@ -1,0 +1,670 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  useWalletAdapter, 
+  SuiWalletButtonStable, 
+  WalletStatus,
+  jastronPassContract,
+  formatAddress,
+  formatBalance,
+  useSuiClient,
+} from '@/lib/sui';
+
+interface OrganizerProfile {
+  id: string;
+  treasury: string;
+  created_at: number;
+}
+
+interface Activity {
+  id: string;
+  total_supply: number;
+  tickets_sold: number;
+  ticket_price: number;
+  organizer_profile_id: string;
+  sale_ended_at: number;
+  created_at: number;
+  status: 'active' | 'sold_out' | 'ended' | 'cancelled';
+}
+
+interface OrganizerStats {
+  totalActivities: number;
+  totalTicketsSold: number;
+  totalRevenue: string;
+  activeActivities: number;
+}
+
+export default function OrganizerPage() {
+  const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
+  const suiClient = useSuiClient();
+  
+  // State
+  const [organizerProfile, setOrganizerProfile] = useState<OrganizerProfile | null>(null);
+  const [organizerStats, setOrganizerStats] = useState<OrganizerStats | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string>('');
+  
+  // Activity creation form
+  const [activityForm, setActivityForm] = useState({
+    totalSupply: '',
+    ticketPrice: '',
+    saleEndedAt: '',
+    description: '',
+  });
+
+  const loadOrganizerProfile = useCallback(async () => {
+    if (!address || !suiClient) return;
+    
+    try {
+      setLoading(true);
+      console.log('Loading organizer profile for address:', address);
+      
+      // Get organizer objects
+      const objects = await suiClient.getOwnedObjects({
+        owner: address,
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      // Find OrganizerProfile object
+      const organizerObject = objects.data.find(obj => 
+        obj.data?.type?.includes('jastron_pass::organizer::OrganizerProfile')
+      );
+
+      if (organizerObject?.data?.content) {
+        const content = organizerObject.data.content as Record<string, unknown>;
+        const fields = content.fields as Record<string, unknown>;
+        const profile: OrganizerProfile = {
+          id: ((fields.id as Record<string, unknown>).id as string),
+          treasury: fields.treasury as string,
+          created_at: Date.now(), // Mock timestamp
+        };
+        
+        setOrganizerProfile(profile);
+        setResult('主辦方資料載入成功');
+      } else {
+        setResult('未找到主辦方資料，請先註冊主辦方');
+      }
+    } catch (error) {
+      console.error('Failed to load organizer profile:', error);
+      setResult(`載入主辦方資料失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [address, suiClient]);
+
+  const loadOrganizerStats = useCallback(async () => {
+    if (!suiClient) return;
+    
+    try {
+      console.log('Loading organizer stats...');
+      
+      // For demo purposes, create mock stats
+      const mockStats: OrganizerStats = {
+        totalActivities: 8,
+        totalTicketsSold: 156,
+        totalRevenue: '7800000000', // 7.8 SUI in MIST
+        activeActivities: 3,
+      };
+      
+      setOrganizerStats(mockStats);
+      console.log('Organizer stats loaded:', mockStats);
+    } catch (error) {
+      console.error('Failed to load organizer stats:', error);
+      setResult(`載入主辦方統計失敗: ${error}`);
+    }
+  }, [suiClient]);
+
+  const loadActivities = useCallback(async () => {
+    if (!suiClient) return;
+    
+    try {
+      console.log('Loading activities...');
+      
+      // For demo purposes, create mock activities
+      const mockActivities: Activity[] = [
+        {
+          id: '0x1',
+          total_supply: 100,
+          tickets_sold: 25,
+          ticket_price: 1000000000, // 1 SUI
+          organizer_profile_id: '0x2',
+          sale_ended_at: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+          created_at: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
+          status: 'active',
+        },
+        {
+          id: '0x3',
+          total_supply: 50,
+          tickets_sold: 50,
+          ticket_price: 2000000000, // 2 SUI
+          organizer_profile_id: '0x2',
+          sale_ended_at: Date.now() + 3 * 24 * 60 * 60 * 1000, // 3 days
+          created_at: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
+          status: 'sold_out',
+        },
+        {
+          id: '0x4',
+          total_supply: 200,
+          tickets_sold: 81,
+          ticket_price: 500000000, // 0.5 SUI
+          organizer_profile_id: '0x2',
+          sale_ended_at: Date.now() - 1 * 24 * 60 * 60 * 1000, // 1 day ago
+          created_at: Date.now() - 10 * 24 * 60 * 60 * 1000, // 10 days ago
+          status: 'ended',
+        },
+      ];
+      
+      setActivities(mockActivities);
+      console.log('Activities loaded:', mockActivities);
+    } catch (error) {
+      console.error('Failed to load activities:', error);
+      setResult(`載入活動失敗: ${error}`);
+    }
+  }, [suiClient]);
+
+  // Load organizer data
+  useEffect(() => {
+    if (connected && address) {
+      loadOrganizerProfile();
+      loadOrganizerStats();
+      loadActivities();
+    }
+  }, [connected, address, loadOrganizerProfile, loadOrganizerStats, loadActivities]);
+
+  const handleRegisterOrganizer = async () => {
+    if (!connected || !address || !signAndExecuteTransactionBlock) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contract = jastronPassContract;
+      const txb = await contract.registerOrganizerProfile();
+      
+      const result = await signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+        }
+      });
+
+      console.log('Organizer registration result:', result);
+      setResult(`主辦方註冊成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Reload organizer profile
+      setTimeout(() => {
+        loadOrganizerProfile();
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to register organizer:', error);
+      setResult(`主辦方註冊失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateActivity = async () => {
+    if (!connected || !address || !signAndExecuteTransactionBlock || !organizerProfile) {
+      setResult('請先連接錢包並確認主辦方資料');
+      return;
+    }
+
+    if (!activityForm.totalSupply || !activityForm.ticketPrice || !activityForm.saleEndedAt) {
+      setResult('請填寫所有必要欄位');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contract = jastronPassContract;
+      const txb = await contract.createActivity(
+        organizerProfile.id, // organizerCap
+        organizerProfile.id, // organizerProfile
+        parseInt(activityForm.totalSupply),
+        parseInt(activityForm.ticketPrice),
+        new Date(activityForm.saleEndedAt).getTime()
+      );
+      
+      const result = await signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+        }
+      });
+
+      console.log('Activity creation result:', result);
+      setResult(`活動創建成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Reset form
+      setActivityForm({
+        totalSupply: '',
+        ticketPrice: '',
+        saleEndedAt: '',
+        description: '',
+      });
+      
+      // Reload activities
+      setTimeout(() => {
+        loadActivities();
+        loadOrganizerStats();
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to create activity:', error);
+      setResult(`活動創建失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadOrganizerProfile(),
+        loadOrganizerStats(),
+        loadActivities(),
+      ]);
+      setResult('主辦方資料已重新整理');
+    } catch (error) {
+      setResult(`重新整理失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getActivityStatus = (activity: Activity): string => {
+    const now = Date.now();
+    if (activity.tickets_sold >= activity.total_supply) return '已售罄';
+    if (activity.sale_ended_at < now) return '已結束';
+    return '進行中';
+  };
+
+  const getActivityStatusColor = (activity: Activity): string => {
+    const now = Date.now();
+    if (activity.tickets_sold >= activity.total_supply) return 'destructive';
+    if (activity.sale_ended_at < now) return 'secondary';
+    return 'default';
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">主辦方管理中心</h1>
+        <SuiWalletButtonStable />
+      </div>
+
+      <WalletStatus />
+
+      {result && (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{result}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Tabs defaultValue="dashboard" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="dashboard">儀表板</TabsTrigger>
+          <TabsTrigger value="activities">活動管理</TabsTrigger>
+          <TabsTrigger value="create">創建活動</TabsTrigger>
+          <TabsTrigger value="profile">主辦方資料</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">總活動數</CardTitle>
+                <Badge variant="outline">活動</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {organizerStats?.totalActivities || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  已創建活動
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">進行中活動</CardTitle>
+                <Badge variant="outline">活動</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {organizerStats?.activeActivities || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  當前進行中
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">總票券銷售</CardTitle>
+                <Badge variant="outline">票券</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {organizerStats?.totalTicketsSold || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  已售出票券
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">總收入</CardTitle>
+                <Badge variant="outline">SUI</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {organizerStats ? formatBalance(organizerStats.totalRevenue) : '0'} SUI
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  票券銷售收入
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>最近活動</CardTitle>
+              <CardDescription>
+                您最近創建的活動概覽
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activities.length > 0 ? (
+                <div className="space-y-4">
+                  {activities.slice(0, 3).map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getActivityStatusColor(activity) as "default" | "destructive" | "secondary" | "outline"}>
+                            {getActivityStatus(activity)}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {formatAddress(activity.id)}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          票價: {formatBalance(activity.ticket_price.toString())} SUI | 
+                          已售: {activity.tickets_sold}/{activity.total_supply}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium">
+                          {formatBalance((activity.ticket_price * activity.tickets_sold).toString())} SUI
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          收入
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  暫無活動
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="activities" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>活動管理</CardTitle>
+              <CardDescription>
+                管理您創建的所有活動
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleRefreshData} 
+                  disabled={loading}
+                  variant="outline"
+                >
+                  {loading ? '載入中...' : '重新整理活動'}
+                </Button>
+                
+                {activities.length > 0 ? (
+                  <div className="space-y-4">
+                    {activities.map((activity) => (
+                      <Card key={activity.id}>
+                        <CardContent className="pt-4">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Label className="font-medium">活動ID</Label>
+                                  <Badge variant="outline">{formatAddress(activity.id)}</Badge>
+                                </div>
+                                <Badge variant={getActivityStatusColor(activity) as "default" | "destructive" | "secondary" | "outline"}>
+                                  {getActivityStatus(activity)}
+                                </Badge>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-semibold">
+                                  {formatBalance((activity.ticket_price * activity.tickets_sold).toString())} SUI
+                                </div>
+                                <div className="text-sm text-muted-foreground">收入</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <Label className="text-muted-foreground">票價</Label>
+                                <p className="font-medium">{formatBalance(activity.ticket_price.toString())} SUI</p>
+                              </div>
+                              <div>
+                                <Label className="text-muted-foreground">總供應量</Label>
+                                <p className="font-medium">{activity.total_supply}</p>
+                              </div>
+                              <div>
+                                <Label className="text-muted-foreground">已售出</Label>
+                                <p className="font-medium">{activity.tickets_sold}</p>
+                              </div>
+                              <div>
+                                <Label className="text-muted-foreground">銷售結束</Label>
+                                <p className="font-medium">
+                                  {new Date(activity.sale_ended_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline">
+                                查看詳情
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                編輯活動
+                              </Button>
+                              {getActivityStatus(activity) === '進行中' && (
+                                <Button size="sm" variant="destructive">
+                                  取消活動
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    暫無活動
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="create" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>創建新活動</CardTitle>
+              <CardDescription>
+                創建新的票券活動
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {organizerProfile ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="total-supply">總票券數量</Label>
+                      <Input
+                        id="total-supply"
+                        type="number"
+                        placeholder="輸入總票券數量"
+                        value={activityForm.totalSupply}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, totalSupply: e.target.value }))}
+                        min="1"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="ticket-price">票價 (MIST)</Label>
+                      <Input
+                        id="ticket-price"
+                        type="number"
+                        placeholder="輸入票價 (以 MIST 為單位)"
+                        value={activityForm.ticketPrice}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, ticketPrice: e.target.value }))}
+                        min="1"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        1 SUI = 1,000,000,000 MIST
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-ended-at">銷售結束時間</Label>
+                      <Input
+                        id="sale-ended-at"
+                        type="datetime-local"
+                        value={activityForm.saleEndedAt}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, saleEndedAt: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="description">活動描述 (選填)</Label>
+                      <Input
+                        id="description"
+                        placeholder="輸入活動描述"
+                        value={activityForm.description}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, description: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleCreateActivity}
+                    disabled={!connected || loading || !activityForm.totalSupply || !activityForm.ticketPrice || !activityForm.saleEndedAt}
+                    className="w-full"
+                  >
+                    {loading ? '創建中...' : '創建活動'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    您還沒有註冊主辦方資料。請先註冊主辦方，然後才能創建活動。
+                  </p>
+                  <Button 
+                    onClick={handleRegisterOrganizer} 
+                    disabled={!connected || loading}
+                    className="w-full"
+                  >
+                    {loading ? '註冊中...' : '註冊主辦方'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="profile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>主辦方資料</CardTitle>
+              <CardDescription>
+                查看和管理您的主辦方資料
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {organizerProfile ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="font-medium">主辦方ID</Label>
+                      <Badge variant="outline" className="text-xs">
+                        {formatAddress(organizerProfile.id)}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">金庫地址</Label>
+                      <Badge variant="outline" className="text-xs">
+                        {formatAddress(organizerProfile.treasury)}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">註冊時間</Label>
+                      <div className="text-sm">
+                        {new Date(organizerProfile.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">狀態</Label>
+                      <Badge variant="default">已註冊</Badge>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    您還沒有註冊主辦方資料。請點擊下方按鈕註冊。
+                  </p>
+                  <Button 
+                    onClick={handleRegisterOrganizer} 
+                    disabled={!connected || loading}
+                    className="w-full"
+                  >
+                    {loading ? '註冊中...' : '註冊主辦方'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
