@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SuiWalletProvider } from "@/lib/sui";
+import { Navigation, Breadcrumb } from "@/components/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,12 +25,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-TW">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SuiWalletProvider>
-          {children}
+          <div className="min-h-screen bg-background">
+            <Navigation />
+            <Breadcrumb />
+            <main className="flex-1">
+              {children}
+            </main>
+          </div>
         </SuiWalletProvider>
       </body>
     </html>

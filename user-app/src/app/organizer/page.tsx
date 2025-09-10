@@ -302,11 +302,6 @@ export default function OrganizerPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">主辦方管理中心</h1>
-        <SuiWalletButtonStable />
-      </div>
-
       <WalletStatus />
 
       {result && (
