@@ -1,4 +1,4 @@
-import { TransactionBlock } from '@mysten/sui.js/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import { CONTRACT_CONFIG, GAS_CONFIG, PACKAGE_ID } from './sui-config';
 import { getDefaultSuiClient } from './sui-client';
 
@@ -12,30 +12,30 @@ export class JastronPassContract {
     this.client = getDefaultSuiClient();
   }
 
-  // Create transaction block
-  private createTransactionBlock(): TransactionBlock {
-    const txb = new TransactionBlock();
-    txb.setGasBudget(GAS_CONFIG.DEFAULT_BUDGET);
-    return txb;
+  // Create transaction
+  private createTransaction(): Transaction {
+    const tx = new Transaction();
+    tx.setGasBudget(GAS_CONFIG.DEFAULT_BUDGET);
+    return tx;
   }
 
   // App module functions
   async registerOrganizerProfile() {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
       arguments: [],
     });
-    return txb;
+    return tx;
   }
 
   async registerUserProfile() {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.REGISTER_USER_PROFILE}`,
       arguments: [],
     });
-    return txb;
+    return tx;
   }
 
   async createActivity(
@@ -45,18 +45,18 @@ export class JastronPassContract {
     ticketPrice: number,
     saleEndedAt: number
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.CREATE_ACTIVITY}`,
       arguments: [
-        txb.object(organizerCap),
-        txb.object(organizerProfile),
-        txb.pure(totalSupply),
-        txb.pure(ticketPrice),
-        txb.pure(saleEndedAt),
+        tx.object(organizerCap),
+        tx.object(organizerProfile),
+        tx.pure.u64(totalSupply),
+        tx.pure.u64(ticketPrice),
+        tx.pure.u64(saleEndedAt),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async buyTicketFromOrganizer(
@@ -67,28 +67,28 @@ export class JastronPassContract {
     organizerProfile: string,
     ticketReceiverProfile: string
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
       arguments: [
-        txb.object(activity),
-        txb.object(payment),
-        txb.object(platform),
-        txb.object(transferPolicy),
-        txb.object(organizerProfile),
-        txb.object(ticketReceiverProfile),
+        tx.object(activity),
+        tx.object(payment),
+        tx.object(platform),
+        tx.object(transferPolicy),
+        tx.object(organizerProfile),
+        tx.object(ticketReceiverProfile),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async createKiosk(userProfile: string) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.CREATE_KIOSK}`,
-      arguments: [txb.object(userProfile)],
+      arguments: [tx.object(userProfile)],
     });
-    return txb;
+    return tx;
   }
 
   async listTicketForResell(
@@ -99,19 +99,19 @@ export class JastronPassContract {
     protectedTicket: string,
     price: number
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.LIST_TICKET_FOR_RESELL}`,
       arguments: [
-        txb.object(kiosk),
-        txb.object(kioskCap),
-        txb.object(transferPolicy),
-        txb.object(activity),
-        txb.object(protectedTicket),
-        txb.pure(price),
+        tx.object(kiosk),
+        tx.object(kioskCap),
+        tx.object(transferPolicy),
+        tx.object(activity),
+        tx.object(protectedTicket),
+        tx.pure.u64(price),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async delistTicket(
@@ -119,16 +119,16 @@ export class JastronPassContract {
     kioskCap: string,
     ticketId: string
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.DELIST_TICKET}`,
       arguments: [
-        txb.object(kiosk),
-        txb.object(kioskCap),
-        txb.pure(ticketId),
+        tx.object(kiosk),
+        tx.object(kioskCap),
+        tx.pure.string(ticketId),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async purchaseTicket(
@@ -140,48 +140,48 @@ export class JastronPassContract {
     platform: string,
     transferPolicy: string
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.PURCHASE_TICKET}`,
       arguments: [
-        txb.object(kiosk),
-        txb.object(payment),
-        txb.pure(ticketId),
-        txb.object(activity),
-        txb.object(organizerProfile),
-        txb.object(platform),
-        txb.object(transferPolicy),
+        tx.object(kiosk),
+        tx.object(payment),
+        tx.pure.string(ticketId),
+        tx.object(activity),
+        tx.object(organizerProfile),
+        tx.object(platform),
+        tx.object(transferPolicy),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async getTicketPrice(kiosk: string, ticketId: string) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.GET_TICKET_PRICE}`,
-      arguments: [txb.object(kiosk), txb.pure(ticketId)],
+      arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
-    return txb;
+    return tx;
   }
 
   async isTicketListed(kiosk: string, ticketId: string) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.IS_TICKET_LISTED}`,
-      arguments: [txb.object(kiosk), txb.pure(ticketId)],
+      arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
-    return txb;
+    return tx;
   }
 
   // Transfer Policy module functions
   async newPolicy(publisher: string) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.NEW_POLICY}`,
-      arguments: [txb.object(publisher)],
+      arguments: [tx.object(publisher)],
     });
-    return txb;
+    return tx;
   }
 
   async addRoyaltyFeeRule(
@@ -190,26 +190,26 @@ export class JastronPassContract {
     feeBp: number,
     minFee: number
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.ADD_ROYALTY_FEE_RULE}`,
       arguments: [
-        txb.object(transferPolicy),
-        txb.object(transferPolicyCap),
-        txb.pure(feeBp),
-        txb.pure(minFee),
+        tx.object(transferPolicy),
+        tx.object(transferPolicyCap),
+        tx.pure.u64(feeBp),
+        tx.pure.u64(minFee),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async calculateRoyaltyFee(transferPolicy: string, price: number) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
-      arguments: [txb.object(transferPolicy), txb.pure(price)],
+      arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
     });
-    return txb;
+    return tx;
   }
 
   async addResellPriceLimitRule(
@@ -217,25 +217,25 @@ export class JastronPassContract {
     transferPolicyCap: string,
     priceLimitBp: number
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.ADD_RESELL_PRICE_LIMIT_RULE}`,
       arguments: [
-        txb.object(transferPolicy),
-        txb.object(transferPolicyCap),
-        txb.pure(priceLimitBp),
+        tx.object(transferPolicy),
+        tx.object(transferPolicyCap),
+        tx.pure.u64(priceLimitBp),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async calculateResellPriceLimit(transferPolicy: string, originalPrice: number) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.CALCULATE_RESELL_PRICE_LIMIT}`,
-      arguments: [txb.object(transferPolicy), txb.pure(originalPrice)],
+      arguments: [tx.object(transferPolicy), tx.pure.u64(originalPrice)],
     });
-    return txb;
+    return tx;
   }
 
   async addPlatformFeeRule(
@@ -244,26 +244,26 @@ export class JastronPassContract {
     feeBp: number,
     minFee: number
   ) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.ADD_PLATFORM_FEE_RULE}`,
       arguments: [
-        txb.object(transferPolicy),
-        txb.object(transferPolicyCap),
-        txb.pure(feeBp),
-        txb.pure(minFee),
+        tx.object(transferPolicy),
+        tx.object(transferPolicyCap),
+        tx.pure.u64(feeBp),
+        tx.pure.u64(minFee),
       ],
     });
-    return txb;
+    return tx;
   }
 
   async calculatePlatformFee(transferPolicy: string, price: number) {
-    const txb = this.createTransactionBlock();
-    txb.moveCall({
+    const tx = this.createTransaction();
+    tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.CALCULATE_PLATFORM_FEE}`,
-      arguments: [txb.object(transferPolicy), txb.pure(price)],
+      arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
     });
-    return txb;
+    return tx;
   }
 
   // Get object by ID

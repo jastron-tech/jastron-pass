@@ -9,12 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   useWalletAdapter, 
-  SuiWalletButtonStable, 
   WalletStatus,
+  WalletDebugStatus,
   jastronPassContract,
   formatAddress,
   formatBalance,
-  useSuiClient,
 } from '@/lib/sui';
 
 interface UserProfile {
@@ -40,8 +39,7 @@ interface Ticket {
 }
 
 export default function UserPage() {
-  const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
-  const suiClient = useSuiClient();
+  const { connected, address, executeTransaction, suiClient } = useWalletAdapter();
   
   // State
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -183,23 +181,36 @@ export default function UserPage() {
   }, [connected, address, loadUserProfile, loadUserTickets, loadAvailableActivities]);
 
   const handleRegisterUser = async () => {
-    if (!connected || !address || !signAndExecuteTransactionBlock) {
+    console.log('Register user - Wallet state:', { 
+      connected, 
+      address, 
+      hasExecuteFunction: !!executeTransaction,
+      executeTransaction: typeof executeTransaction
+    });
+    
+    if (!connected) {
       setResult('請先連接錢包');
+      return;
+    }
+    
+    if (!address) {
+      setResult('無法獲取錢包地址，請重新連接錢包');
+      return;
+    }
+    
+    if (!executeTransaction) {
+      setResult('錢包未正確連接，請重新連接錢包');
       return;
     }
 
     setLoading(true);
     try {
+      console.log('Creating user registration transaction...');
       const contract = jastronPassContract;
-      const txb = await contract.registerUserProfile();
+      const tx = await contract.registerUserProfile();
       
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-        }
-      });
+      console.log('Executing transaction...');
+      const result = await executeTransaction(tx);
 
       console.log('User registration result:', result);
       setResult(`用戶註冊成功！交易: ${(result as { digest: string }).digest}`);
@@ -217,7 +228,7 @@ export default function UserPage() {
   };
 
   const handleBuyTicket = async (activityId: string, ticketPrice: number) => {
-    if (!connected || !address || !signAndExecuteTransactionBlock) {
+    if (!connected || !address || !executeTransaction) {
       setResult('請先連接錢包');
       return;
     }
@@ -285,6 +296,7 @@ export default function UserPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
+      <WalletDebugStatus />
 
       {result && (
         <Card>

@@ -73,6 +73,86 @@ export function useWalletAdapter() {
   const { mutate: connect } = useConnectWallet();
   const { mutate: disconnect } = useDisconnectWallet();
   const wallets = useWallets();
+  const suiClient = useSuiClient();
+  
+  // Get signAndExecuteTransactionBlock from the wallet's features
+  const signAndExecuteTransactionBlock = (wallet.currentWallet?.features as { sui?: { signAndExecuteTransactionBlock?: (tx: unknown) => Promise<unknown> } })?.sui?.signAndExecuteTransactionBlock;
+  
+  // Helper function to execute transactions using the wallet's signAndExecuteTransactionBlock method
+  const executeTransaction = async (transaction: unknown) => {
+    if (!wallet.currentWallet) {
+      throw new Error('錢包未連接');
+    }
+    
+    if (!signAndExecuteTransactionBlock) {
+      throw new Error('錢包不支援交易簽名功能');
+    }
+    
+    // Use the wallet's signAndExecuteTransactionBlock method
+    return await signAndExecuteTransactionBlock(transaction);
+  };
+
+  // Alternative method: Execute transaction using suiClient with keypair (for development)
+  const executeTransactionWithKeypair = async (transaction: unknown, keypair: unknown) => {
+    if (!suiClient) {
+      throw new Error('SuiClient 未初始化');
+    }
+    
+    try {
+      // Use suiClient.signAndExecuteTransaction with keypair
+      const result = await suiClient.signAndExecuteTransaction({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        signer: keypair as any, // Type assertion for keypair
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        transaction: transaction as any, // Type assertion for transaction
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+          showBalanceChanges: true,
+        }
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('使用 keypair 执行交易失败:', error);
+      throw error;
+    }
+  };
+
+  // Method to execute transaction step by step (sign first, then execute)
+  const executeTransactionStepByStep = async (transaction: unknown, keypair: unknown) => {
+    if (!suiClient) {
+      throw new Error('SuiClient 未初始化');
+    }
+    
+    try {
+      // Step 1: Sign the transaction
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { bytes, signature } = await (transaction as any).sign({
+        client: suiClient,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        signer: keypair as any,
+      });
+      
+      console.log('交易已签名:', { bytes, signature });
+      
+      // Step 2: Execute the signed transaction
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
+        options: {
+          showEffects: true,
+          showObjectChanges: true,
+          showBalanceChanges: true,
+        }
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('分步执行交易失败:', error);
+      throw error;
+    }
+  };
   
   return {
     connected: wallet.isConnected,
@@ -84,7 +164,11 @@ export function useWalletAdapter() {
       }
     },
     disconnect: () => disconnect(),
-    signAndExecuteTransactionBlock: (wallet.currentWallet as { signAndExecuteTransactionBlock?: (tx: unknown) => Promise<unknown> })?.signAndExecuteTransactionBlock || (() => Promise.reject('Wallet not connected')),
+    signAndExecuteTransactionBlock: signAndExecuteTransactionBlock || undefined,
+    executeTransaction,
+    executeTransactionWithKeypair,
+    executeTransactionStepByStep,
+    suiClient,
   };
 }
 
@@ -187,6 +271,25 @@ export function WalletStatus() {
     <div className="flex items-center gap-2">
       <div className="w-2 h-2 bg-red-500 rounded-full" />
       <span className="text-sm">Not connected</span>
+    </div>
+  );
+}
+
+// Debug wallet status component
+export function WalletDebugStatus() {
+  const wallet = useCurrentWallet();
+  const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
+  
+  return (
+    <div className="border border-orange-200 bg-orange-50 p-3 rounded-lg text-xs space-y-1">
+      <div className="font-semibold text-orange-800">錢包調試資訊</div>
+      <div>isConnected: {wallet.isConnected ? 'true' : 'false'}</div>
+      <div>isConnecting: {wallet.isConnecting ? 'true' : 'false'}</div>
+      <div>currentWallet: {wallet.currentWallet ? '存在' : 'null'}</div>
+      <div>accounts: {wallet.currentWallet?.accounts?.length || 0}</div>
+      <div>address: {address || 'null'}</div>
+      <div>hasSignFunction: {signAndExecuteTransactionBlock !== undefined ? 'true' : 'false'}</div>
+      <div>connected (adapter): {connected ? 'true' : 'false'}</div>
     </div>
   );
 }

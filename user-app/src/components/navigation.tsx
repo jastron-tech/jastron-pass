@@ -22,6 +22,11 @@ const navigation = [
     href: '/platform',
     description: '平台運營與設定',
   },
+  {
+    name: 'PTB 演示',
+    href: '/transaction-demo',
+    description: 'Sui PTB 交易執行演示',
+  },
 ];
 
 export function Navigation() {

@@ -9,11 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   useWalletAdapter, 
-  SuiWalletButtonStable, 
   WalletStatus,
   formatAddress,
   formatBalance,
-  useSuiClient,
 } from '@/lib/sui';
 
 interface PlatformInfo {
@@ -38,8 +36,7 @@ interface TransactionRecord {
 }
 
 export default function PlatformPage() {
-  const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
-  const suiClient = useSuiClient();
+  const { connected, address, signAndExecuteTransactionBlock, suiClient } = useWalletAdapter();
   
   // State
   const [platformInfo, setPlatformInfo] = useState<PlatformInfo | null>(null);

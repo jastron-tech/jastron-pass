@@ -9,12 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   useWalletAdapter, 
-  SuiWalletButtonStable, 
   WalletStatus,
   jastronPassContract,
   formatAddress,
   formatBalance,
-  useSuiClient,
 } from '@/lib/sui';
 
 interface OrganizerProfile {
@@ -42,8 +40,7 @@ interface OrganizerStats {
 }
 
 export default function OrganizerPage() {
-  const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
-  const suiClient = useSuiClient();
+  const { connected, address, executeTransaction, suiClient } = useWalletAdapter();
   
   // State
   const [organizerProfile, setOrganizerProfile] = useState<OrganizerProfile | null>(null);
@@ -183,23 +180,36 @@ export default function OrganizerPage() {
   }, [connected, address, loadOrganizerProfile, loadOrganizerStats, loadActivities]);
 
   const handleRegisterOrganizer = async () => {
-    if (!connected || !address || !signAndExecuteTransactionBlock) {
+    console.log('Register organizer - Wallet state:', { 
+      connected, 
+      address, 
+      hasSignFunction: !!executeTransaction,
+      executeTransaction: typeof executeTransaction
+    });
+    
+    if (!connected) {
       setResult('請先連接錢包');
+      return;
+    }
+    
+    if (!address) {
+      setResult('無法獲取錢包地址，請重新連接錢包');
+      return;
+    }
+    
+    if (!executeTransaction) {
+      setResult('錢包未正確連接，請重新連接錢包');
       return;
     }
 
     setLoading(true);
     try {
+      console.log('Creating organizer registration transaction...');
       const contract = jastronPassContract;
-      const txb = await contract.registerOrganizerProfile();
+      const tx = await contract.registerOrganizerProfile();
       
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-        }
-      });
+      console.log('Executing transaction...');
+      const result = await executeTransaction(tx);
 
       console.log('Organizer registration result:', result);
       setResult(`主辦方註冊成功！交易: ${(result as { digest: string }).digest}`);
@@ -217,7 +227,7 @@ export default function OrganizerPage() {
   };
 
   const handleCreateActivity = async () => {
-    if (!connected || !address || !signAndExecuteTransactionBlock || !organizerProfile) {
+    if (!connected || !address || !executeTransaction || !organizerProfile) {
       setResult('請先連接錢包並確認主辦方資料');
       return;
     }
@@ -230,7 +240,7 @@ export default function OrganizerPage() {
     setLoading(true);
     try {
       const contract = jastronPassContract;
-      const txb = await contract.createActivity(
+      const tx = await contract.createActivity(
         organizerProfile.id, // organizerCap
         organizerProfile.id, // organizerProfile
         parseInt(activityForm.totalSupply),
@@ -238,13 +248,7 @@ export default function OrganizerPage() {
         new Date(activityForm.saleEndedAt).getTime()
       );
       
-      const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-        }
-      });
+      const result = await executeTransaction(tx);
 
       console.log('Activity creation result:', result);
       setResult(`活動創建成功！交易: ${(result as { digest: string }).digest}`);
