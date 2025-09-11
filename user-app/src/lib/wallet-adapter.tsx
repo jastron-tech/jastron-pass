@@ -120,7 +120,7 @@ export function useWalletAdapter() {
     // Use the wallet's signAndExecuteTransactionBlock method
     const result = await signAndExecuteTransactionBlock({
       transaction: transaction,
-      chain: `sui:${CURRENT_NETWORK}`
+      chain: CURRENT_NETWORK,
     });
     console.log('交易结果:', result);
     setDigest(result.digest);

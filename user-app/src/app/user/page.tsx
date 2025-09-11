@@ -14,6 +14,7 @@ import {
   jastronPassContract,
   formatAddress,
   formatBalance,
+  CURRENT_NETWORK,
 } from '@/lib/sui';
 
 interface UserProfile {
@@ -48,6 +49,7 @@ export default function UserPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [searchActivityId, setSearchActivityId] = useState('');
+  const [currentNetwork] = useState<string>(CURRENT_NETWORK);
 
   const loadUserProfile = useCallback(async () => {
     if (!address || !suiClient) return;
@@ -297,6 +299,27 @@ export default function UserPage() {
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
       <WalletDebugStatus />
+
+      {/* Network Status Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>網路狀態</CardTitle>
+          <CardDescription>
+            當前連接的 Sui 網路資訊
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Label className="font-medium">當前網路:</Label>
+            <Badge variant="outline" className="capitalize">
+              {currentNetwork}
+            </Badge>
+          </div>
+          <div className="mt-2 text-sm text-muted-foreground">
+            錢包地址: {address ? formatAddress(address) : '未連接'}
+          </div>
+        </CardContent>
+      </Card>
 
       {result && (
         <Card>

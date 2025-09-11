@@ -130,7 +130,8 @@ export function SuiDemo() {
       const txb = await jastronPassContract.registerUserProfile();
 
       const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
+        transaction: txb,
+        chain: currentNetwork,
       });
 
       setResult(`User profile registered! Digest: ${(result as { digest: string }).digest}`);
@@ -152,7 +153,8 @@ export function SuiDemo() {
       const txb = await jastronPassContract.registerOrganizerProfile();
 
       const result = await signAndExecuteTransactionBlock({
-        transactionBlock: txb,
+        transaction: txb,
+        chain: currentNetwork,
       });
 
       setResult(`Organizer profile registered! Digest: ${(result as { digest: string }).digest}`);

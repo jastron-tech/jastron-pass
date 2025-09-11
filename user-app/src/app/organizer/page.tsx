@@ -13,6 +13,7 @@ import {
   jastronPassContract,
   formatAddress,
   formatBalance,
+  CURRENT_NETWORK,
 } from '@/lib/sui';
 
 interface OrganizerProfile {
@@ -307,6 +308,27 @@ export default function OrganizerPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
+
+      {/* Network Status Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>網路狀態</CardTitle>
+          <CardDescription>
+            當前連接的 Sui 網路資訊
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Label className="font-medium">當前網路:</Label>
+            <Badge variant="outline" className="capitalize">
+              {CURRENT_NETWORK}
+            </Badge>
+          </div>
+          <div className="mt-2 text-sm text-muted-foreground">
+            錢包地址: {address ? formatAddress(address) : '未連接'}
+          </div>
+        </CardContent>
+      </Card>
 
       {result && (
         <Card>
