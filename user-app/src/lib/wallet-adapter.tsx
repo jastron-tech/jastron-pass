@@ -124,73 +124,9 @@ export function useWalletAdapter() {
     });
     console.log('交易结果:', result);
     setDigest(result.digest);
-    return {
-      digest: digest,
-    };
+    return result;
   };
 
-  // Alternative method: Execute transaction using suiClient with keypair (for development)
-  const executeTransactionWithKeypair = async (transaction: unknown, keypair: unknown) => {
-    if (!suiClient) {
-      throw new Error('SuiClient 未初始化');
-    }
-    
-    try {
-      // Use suiClient.signAndExecuteTransaction with keypair
-      const result = await suiClient.signAndExecuteTransaction({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        signer: keypair as any, // Type assertion for keypair
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        transaction: transaction as any, // Type assertion for transaction
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-          showBalanceChanges: true,
-        }
-      });
-      
-      return result;
-    } catch (error) {
-      console.error('使用 keypair 执行交易失败:', error);
-      throw error;
-    }
-  };
-
-  // Method to execute transaction step by step (sign first, then execute)
-  const executeTransactionStepByStep = async (transaction: unknown, keypair: unknown) => {
-    if (!suiClient) {
-      throw new Error('SuiClient 未初始化');
-    }
-    
-    try {
-      // Step 1: Sign the transaction
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { bytes, signature } = await (transaction as any).sign({
-        client: suiClient,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        signer: keypair as any,
-      });
-      
-      console.log('交易已签名:', { bytes, signature });
-      
-      // Step 2: Execute the signed transaction
-      const result = await suiClient.executeTransactionBlock({
-        transactionBlock: bytes,
-        signature,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-          showBalanceChanges: true,
-        }
-      });
-      
-      return result;
-    } catch (error) {
-      console.error('分步执行交易失败:', error);
-      throw error;
-    }
-  };
-  
   return {
     connected: wallet.isConnected,
     connecting: wallet.isConnecting,
@@ -203,8 +139,6 @@ export function useWalletAdapter() {
     disconnect: () => disconnect(),
     signAndExecuteTransactionBlock: signAndExecuteTransactionBlock || undefined,
     executeTransaction,
-    executeTransactionWithKeypair,
-    executeTransactionStepByStep,
     suiClient,
   };
 }

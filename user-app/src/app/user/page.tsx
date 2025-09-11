@@ -209,7 +209,7 @@ export default function UserPage() {
     try {
       console.log('Creating user registration transaction...');
       const contract = jastronPassContract;
-      const tx = await contract.registerUserProfile();
+      const tx = await contract.registerUserProfile(address);
       
       console.log('Executing transaction...');
       const result = await executeTransaction(tx);

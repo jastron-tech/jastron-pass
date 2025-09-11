@@ -29,12 +29,15 @@ export class JastronPassContract {
     return tx;
   }
 
-  async registerUserProfile() {
+  async registerUserProfile(receiver: string) {
     const tx = this.createTransaction();
-    tx.moveCall({
+    const userCap = tx.moveCall({
       target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.REGISTER_USER_PROFILE}`,
       arguments: [],
     });
+    
+    // Transfer the returned UserCap to the receiver
+    tx.transferObjects([userCap], receiver);
     return tx;
   }
 
