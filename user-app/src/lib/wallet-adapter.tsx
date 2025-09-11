@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
   WalletProvider, 
@@ -11,8 +11,11 @@ import {
   useConnectWallet,
   useDisconnectWallet,
   useWallets,
-  SuiClientProvider
+  SuiClientProvider,
+  useSignAndExecuteTransaction,
 } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
+import { CURRENT_NETWORK } from './sui-config';
 
 // Wallet context
 interface WalletContextType {
@@ -69,6 +72,8 @@ export function useSuiWallet(): WalletContextType {
 
 // Wallet adapter hook
 export function useWalletAdapter() {
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+	const [digest, setDigest] = useState('');
   const wallet = useCurrentWallet();
   const { mutate: connect } = useConnectWallet();
   const { mutate: disconnect } = useDisconnectWallet();
@@ -76,10 +81,34 @@ export function useWalletAdapter() {
   const suiClient = useSuiClient();
   
   // Get signAndExecuteTransactionBlock from the wallet's features
-  const signAndExecuteTransactionBlock = (wallet.currentWallet?.features as { sui?: { signAndExecuteTransactionBlock?: (tx: unknown) => Promise<unknown> } })?.sui?.signAndExecuteTransactionBlock;
+  const signAndExecuteTransactionBlock = ({
+    transaction,
+    chain
+  }: {
+    transaction: Transaction;
+    chain: string;
+  }): Promise<{
+    digest: string;
+    effects: string;
+  }> => {
+    return new Promise((resolve, reject) => {
+      signAndExecuteTransaction({
+        transaction: transaction,
+        chain: `sui:${chain}`,
+      }, {
+        onSuccess: (result) => {
+          setDigest(result.digest);
+          resolve(result);
+        },
+        onError: (error) => {
+          reject(error);
+        }
+      });
+    });
+  };
   
   // Helper function to execute transactions using the wallet's signAndExecuteTransactionBlock method
-  const executeTransaction = async (transaction: unknown) => {
+  const executeTransaction = async (transaction: Transaction) => {
     if (!wallet.currentWallet) {
       throw new Error('錢包未連接');
     }
@@ -89,7 +118,15 @@ export function useWalletAdapter() {
     }
     
     // Use the wallet's signAndExecuteTransactionBlock method
-    return await signAndExecuteTransactionBlock(transaction);
+    const result = await signAndExecuteTransactionBlock({
+      transaction: transaction,
+      chain: `sui:${CURRENT_NETWORK}`
+    });
+    console.log('交易结果:', result);
+    setDigest(result.digest);
+    return {
+      digest: digest,
+    };
   };
 
   // Alternative method: Execute transaction using suiClient with keypair (for development)
