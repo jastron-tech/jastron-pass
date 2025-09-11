@@ -15,6 +15,8 @@ import {
   formatAddress,
   formatBalance,
   CURRENT_NETWORK,
+  JASTRON_PASS_PACKAGE,
+  PACKAGE_ID
 } from '@/lib/sui';
 
 interface UserProfile {
@@ -58,7 +60,7 @@ export default function UserPage() {
       setLoading(true);
       console.log('Loading user profile for address:', address);
       
-      // Get user objects
+      // Step 1: Get user objects to find UserCap
       const objects = await suiClient.getOwnedObjects({
         owner: address,
         options: {
@@ -66,13 +68,35 @@ export default function UserPage() {
           showType: true,
         }
       });
+      console.log('user owned objects:', objects);
 
-      // Find UserProfile object
-      const userProfileObject = objects.data.find(obj => 
-        obj.data?.type?.includes('jastron_pass::user::UserProfile')
+      // Step 2: Find UserCap object
+      const userCapObject = objects.data.find(obj => 
+        obj.data?.type?.includes(`${PACKAGE_ID}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.STRUCTS.USER_CAP}`)
       );
 
-      if (userProfileObject?.data?.content) {
+      if (!userCapObject?.data?.content) {
+        setResult('未找到 UserCap，請先註冊用戶資料');
+        return;
+      }
+
+      // Step 3: Extract profile_id from UserCap
+      const userCapContent = userCapObject.data.content as Record<string, unknown>;
+      const userCapFields = userCapContent.fields as Record<string, unknown>;
+      const profileId = userCapFields.profile_id as string;
+      
+      console.log('Found UserCap with profile_id:', profileId);
+
+      // Step 4: Get UserProfile object using the profile_id
+      const userProfileObject = await suiClient.getObject({
+        id: profileId,
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      if (userProfileObject.data?.content) {
         const content = userProfileObject.data.content as Record<string, unknown>;
         const fields = content.fields as Record<string, unknown>;
         const profile: UserProfile = {
@@ -82,8 +106,9 @@ export default function UserPage() {
         };
         setUserProfile(profile);
         setResult('用戶資料載入成功');
+        console.log('Loaded user profile:', profile);
       } else {
-        setResult('未找到用戶資料，請先註冊');
+        setResult('未找到 UserProfile 對象');
       }
     } catch (error) {
       console.error('Failed to load user profile:', error);

@@ -22,7 +22,7 @@ export const SUI_NETWORKS = {
 export type SuiNetwork = keyof typeof SUI_NETWORKS;
 
 // Contract configuration
-export const CONTRACT_CONFIG = {
+export const JASTRON_PASS_PACKAGE = {
   // Package ID from testnet deployment
   testnet: {
     PACKAGE_ID: '0x96d2d7b6b3e778975e4a4a968dc96a70e26c3cad21e3d8e07dcc87454f07ae06',
@@ -40,6 +40,7 @@ export const CONTRACT_CONFIG = {
     PUBLISHER_ID: '',
   },
   
+  NAME: 'jastron_pass',
   // Module names
   MODULES: {
     APP: 'app',
@@ -51,6 +52,18 @@ export const CONTRACT_CONFIG = {
     TICKET_TRANSFER_POLICY: 'ticket_transfer_policy',
   },
   
+  STRUCTS: {
+    ORGANIZER_CAP: 'OrganizerCap',
+    ORGANIZER_PROFILE: 'OrganizerProfile',
+    USER_CAP: 'UserCap',
+    USER_PROFILE: 'UserProfile',
+    TICKET: 'Ticket',
+    ACTIVITY: 'Activity',
+    TICKET_TRANSFER_POLICY: 'TicketTransferPolicy',
+    PROTECTED_TICKET: 'ProtectedTicket',
+    PLATFORM: 'Platform'
+  },
+
   // Public function names from Move contracts
   FUNCTIONS: {
     // App module (public functions only)
@@ -116,6 +129,6 @@ export const GAS_CONFIG = {
 } as const;
 
 
-export const PACKAGE_ID = CONTRACT_CONFIG[CURRENT_NETWORK].PACKAGE_ID;
-export const PLATFORM_ID = CONTRACT_CONFIG[CURRENT_NETWORK].PLATFORM_ID;
-export const PUBLISHER_ID = CONTRACT_CONFIG[CURRENT_NETWORK].PUBLISHER_ID;
+export const PACKAGE_ID = JASTRON_PASS_PACKAGE[CURRENT_NETWORK].PACKAGE_ID;
+export const PLATFORM_ID = JASTRON_PASS_PACKAGE[CURRENT_NETWORK].PLATFORM_ID;
+export const PUBLISHER_ID = JASTRON_PASS_PACKAGE[CURRENT_NETWORK].PUBLISHER_ID;

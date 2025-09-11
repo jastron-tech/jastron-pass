@@ -15,6 +15,7 @@ import {
   formatBalance,
   CURRENT_NETWORK,
 } from '@/lib/sui';
+import { JASTRON_PASS_PACKAGE, PACKAGE_ID } from '@/lib/sui-config';
 
 interface OrganizerProfile {
   id: string;
@@ -65,7 +66,7 @@ export default function OrganizerPage() {
       setLoading(true);
       console.log('Loading organizer profile for address:', address);
       
-      // Get organizer objects
+      // Step 1: Get organizer objects to find OrganizerCap
       const objects = await suiClient.getOwnedObjects({
         owner: address,
         options: {
@@ -74,24 +75,48 @@ export default function OrganizerPage() {
         }
       });
 
-      // Find OrganizerProfile object
-      const organizerObject = objects.data.find(obj => 
-        obj.data?.type?.includes('jastron_pass::organizer::OrganizerProfile')
+      console.log('organizer owned objects:', objects);
+
+      // Step 2: Find OrganizerCap object
+      const organizerCapObject = objects.data.find(obj => 
+        obj.data?.type?.includes(`${PACKAGE_ID}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.STRUCTS.ORGANIZER_CAP}`)
       );
 
-      if (organizerObject?.data?.content) {
-        const content = organizerObject.data.content as Record<string, unknown>;
+      if (!organizerCapObject?.data?.content) {
+        setResult('未找到 OrganizerCap，請先註冊主辦方資料');
+        return;
+      }
+
+      // Step 3: Extract profile_id from OrganizerCap
+      const organizerCapContent = organizerCapObject.data.content as Record<string, unknown>;
+      const organizerCapFields = organizerCapContent.fields as Record<string, unknown>;
+      const profileId = organizerCapFields.profile_id as string;
+      
+      console.log('Found OrganizerCap with profile_id:', profileId);
+
+      // Step 4: Get OrganizerProfile object using the profile_id
+      const organizerProfileObject = await suiClient.getObject({
+        id: profileId,
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      if (organizerProfileObject.data?.content) {
+        const content = organizerProfileObject.data.content as Record<string, unknown>;
         const fields = content.fields as Record<string, unknown>;
         const profile: OrganizerProfile = {
-          id: ((fields.id as Record<string, unknown>).id as string),
+          id: (fields.id as Record<string, unknown>).id as string,
           treasury: fields.treasury as string,
           created_at: Date.now(), // Mock timestamp
         };
         
         setOrganizerProfile(profile);
         setResult('主辦方資料載入成功');
+        console.log('Loaded organizer profile:', profile);
       } else {
-        setResult('未找到主辦方資料，請先註冊主辦方');
+        setResult('未找到 OrganizerProfile 對象');
       }
     } catch (error) {
       console.error('Failed to load organizer profile:', error);
@@ -207,7 +232,7 @@ export default function OrganizerPage() {
     try {
       console.log('Creating organizer registration transaction...');
       const contract = jastronPassContract;
-      const tx = await contract.registerOrganizerProfile();
+      const tx = await contract.registerOrganizerProfile(address);
       
       console.log('Executing transaction...');
       const result = await executeTransaction(tx);

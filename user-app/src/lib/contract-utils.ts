@@ -1,5 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { CONTRACT_CONFIG, GAS_CONFIG, PACKAGE_ID } from './sui-config';
+import { JASTRON_PASS_PACKAGE, GAS_CONFIG, PACKAGE_ID } from './sui-config';
 import { getDefaultSuiClient } from './sui-client';
 
 // Contract interaction utilities
@@ -20,19 +20,20 @@ export class JastronPassContract {
   }
 
   // App module functions
-  async registerOrganizerProfile() {
+  async registerOrganizerProfile(receiver: string) {
     const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
+    const organizerCap = tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
       arguments: [],
     });
+    tx.transferObjects([organizerCap], receiver);
     return tx;
   }
 
   async registerUserProfile(receiver: string) {
     const tx = this.createTransaction();
     const userCap = tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.REGISTER_USER_PROFILE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_USER_PROFILE}`,
       arguments: [],
     });
     
@@ -50,7 +51,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.CREATE_ACTIVITY}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CREATE_ACTIVITY}`,
       arguments: [
         tx.object(organizerCap),
         tx.object(organizerProfile),
@@ -72,7 +73,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
       arguments: [
         tx.object(activity),
         tx.object(payment),
@@ -88,7 +89,7 @@ export class JastronPassContract {
   async createKiosk(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.CREATE_KIOSK}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CREATE_KIOSK}`,
       arguments: [tx.object(userProfile)],
     });
     return tx;
@@ -104,7 +105,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.LIST_TICKET_FOR_RESELL}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.LIST_TICKET_FOR_RESELL}`,
       arguments: [
         tx.object(kiosk),
         tx.object(kioskCap),
@@ -124,7 +125,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.DELIST_TICKET}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.DELIST_TICKET}`,
       arguments: [
         tx.object(kiosk),
         tx.object(kioskCap),
@@ -145,7 +146,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.PURCHASE_TICKET}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PURCHASE_TICKET}`,
       arguments: [
         tx.object(kiosk),
         tx.object(payment),
@@ -162,7 +163,7 @@ export class JastronPassContract {
   async getTicketPrice(kiosk: string, ticketId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.GET_TICKET_PRICE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.GET_TICKET_PRICE}`,
       arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
     return tx;
@@ -171,7 +172,7 @@ export class JastronPassContract {
   async isTicketListed(kiosk: string, ticketId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.APP}::${CONTRACT_CONFIG.FUNCTIONS.IS_TICKET_LISTED}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.IS_TICKET_LISTED}`,
       arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
     return tx;
@@ -181,7 +182,7 @@ export class JastronPassContract {
   async newPolicy(publisher: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.NEW_POLICY}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.NEW_POLICY}`,
       arguments: [tx.object(publisher)],
     });
     return tx;
@@ -195,7 +196,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.ADD_ROYALTY_FEE_RULE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_ROYALTY_FEE_RULE}`,
       arguments: [
         tx.object(transferPolicy),
         tx.object(transferPolicyCap),
@@ -209,7 +210,7 @@ export class JastronPassContract {
   async calculateRoyaltyFee(transferPolicy: string, price: number) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
       arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
     });
     return tx;
@@ -222,7 +223,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.ADD_RESELL_PRICE_LIMIT_RULE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_RESELL_PRICE_LIMIT_RULE}`,
       arguments: [
         tx.object(transferPolicy),
         tx.object(transferPolicyCap),
@@ -235,7 +236,7 @@ export class JastronPassContract {
   async calculateResellPriceLimit(transferPolicy: string, originalPrice: number) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.CALCULATE_RESELL_PRICE_LIMIT}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_RESELL_PRICE_LIMIT}`,
       arguments: [tx.object(transferPolicy), tx.pure.u64(originalPrice)],
     });
     return tx;
@@ -249,7 +250,7 @@ export class JastronPassContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.ADD_PLATFORM_FEE_RULE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_PLATFORM_FEE_RULE}`,
       arguments: [
         tx.object(transferPolicy),
         tx.object(transferPolicyCap),
@@ -263,7 +264,7 @@ export class JastronPassContract {
   async calculatePlatformFee(transferPolicy: string, price: number) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${CONTRACT_CONFIG.MODULES.TICKET_TRANSFER_POLICY}::${CONTRACT_CONFIG.FUNCTIONS.CALCULATE_PLATFORM_FEE}`,
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_PLATFORM_FEE}`,
       arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
     });
     return tx;

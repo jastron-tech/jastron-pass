@@ -127,7 +127,7 @@ export function SuiDemo() {
 
     setLoading(true);
     try {
-      const txb = await jastronPassContract.registerUserProfile();
+      const txb = await jastronPassContract.registerUserProfile(address);
 
       const result = await signAndExecuteTransactionBlock({
         transaction: txb,
@@ -150,7 +150,7 @@ export function SuiDemo() {
 
     setLoading(true);
     try {
-      const txb = await jastronPassContract.registerOrganizerProfile();
+      const txb = await jastronPassContract.registerOrganizerProfile(address);
 
       const result = await signAndExecuteTransactionBlock({
         transaction: txb,
