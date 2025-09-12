@@ -17,7 +17,7 @@ import {
 } from '@/lib/sui';
 import { JASTRON_PASS_PACKAGE, getPackageId } from '@/lib/sui-config';
 import { AccountSwitcher } from '@/components/account-switcher';
-import { useNetwork } from '@/lib/network-context';
+import { useNetwork } from '@/context/network-context';
 
 interface OrganizerProfile {
   id: string;

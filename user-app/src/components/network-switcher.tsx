@@ -1,27 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { SUI_NETWORKS, SuiNetwork, CURRENT_NETWORK } from '@/lib/sui-config';
+import { SUI_NETWORKS, SuiNetwork } from '@/lib/sui-config';
+import { useNetwork } from '@/context/network-context';
 
 interface NetworkSwitcherProps {
   onNetworkChange?: (network: SuiNetwork) => void;
 }
 
 export function NetworkSwitcher({ onNetworkChange }: NetworkSwitcherProps) {
-  const [currentNetwork, setCurrentNetwork] = useState<SuiNetwork>(CURRENT_NETWORK);
+  const { currentNetwork, setCurrentNetwork } = useNetwork();
   const [switching, setSwitching] = useState(false);
-
-  // Load network from localStorage on mount
-  useEffect(() => {
-    const savedNetwork = localStorage.getItem('sui-network') as SuiNetwork;
-    if (savedNetwork && SUI_NETWORKS[savedNetwork]) {
-      setCurrentNetwork(savedNetwork);
-    }
-  }, []);
 
   const handleNetworkSwitch = async (network: SuiNetwork) => {
     if (network === currentNetwork) {

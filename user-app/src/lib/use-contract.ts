@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useNetwork } from './network-context';
+import { useNetwork } from '../context/network-context';
 import { JastronPassContract } from './contract-utils';
 
 export function useContract() {

@@ -16,7 +16,7 @@ import {
   useNetwork,
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
-import { NetworkSwitcher } from '@/components/network-switcher';
+import { NetworkSwitcher } from '@/context/wallet-adapter';
 
 interface PlatformInfo {
   id: string;

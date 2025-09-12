@@ -1,10 +1,10 @@
 // Sui SDK exports
 export * from './sui-config';
 export * from './sui-client';
-export * from './wallet-adapter';
+export * from '../context/wallet-adapter';
 export * from './contract-utils';
 export * from './types';
-export * from './network-context';
+export * from '../context/network-context';
 export * from './use-contract-ids';
 export * from './use-contract';
 

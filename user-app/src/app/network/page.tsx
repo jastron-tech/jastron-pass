@@ -1,9 +1,9 @@
 'use client';
 
-import { SuiWalletProvider } from '@/lib/wallet-adapter';
-import { NetworkSwitcher } from '@/components/network-switcher';
-import { WalletStatus } from '@/lib/wallet-adapter';
-import { WalletDebugStatus } from '@/lib/wallet-adapter';
+import { SuiWalletProvider } from '@/context/wallet-adapter';
+import { NetworkSwitcher } from '@/context/wallet-adapter';
+import { WalletStatus } from '@/context/wallet-adapter';
+import { WalletDebugStatus } from '@/context/wallet-adapter';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 

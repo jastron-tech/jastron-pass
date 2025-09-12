@@ -18,7 +18,7 @@ import {
   getPackageId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
-import { useNetwork } from '@/lib/network-context';
+import { useNetwork } from '@/context/network-context';
 
 interface UserProfile {
   id: string;
@@ -118,7 +118,7 @@ export default function UserPage() {
     } finally {
       setLoading(false);
     }
-  }, [address, suiClient]);
+  }, [address, suiClient, currentNetwork]);
 
   const loadUserTickets = useCallback(async () => {
     if (!address || !suiClient) return;

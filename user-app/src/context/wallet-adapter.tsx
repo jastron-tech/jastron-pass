@@ -18,7 +18,7 @@ import {
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { useNetwork, NetworkProvider } from './network-context';
-import { getSuiClient } from './sui-client';
+import { getSuiClient } from '../lib/sui-client';
 
 // Wallet context
 interface WalletContextType {
@@ -230,130 +230,15 @@ export function useWalletAdapter(): WalletContextType {
   return context;
 }
 
-// Wallet button component using official ConnectButton
-export function SuiWalletButton() {
-  return (
-    <ConnectButton 
-      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-      connectText="Connect Wallet"
-    />
-  );
-}
 
-// Stable wallet button component (recommended)
-export function SuiWalletButtonStable() {
-  const wallet = useCurrentWallet();
-  const { mutate: connect } = useConnectWallet();
-  const { mutate: disconnect } = useDisconnectWallet();
-  const wallets = useWallets();
-  
-  const handleClick = () => {
-    if (wallet.isConnected) {
-      disconnect();
-    } else {
-      if (wallets.length > 0) {
-        connect({ wallet: wallets[0] });
-      }
-    }
-  };
+// Re-export wallet components from components directory
+export { SuiWalletButton } from '@/components/sui-wallet-button';
+export { SuiWalletButtonStable } from '@/components/sui-wallet-button-stable';
+export { SuiWalletButtonCustom } from '@/components/sui-wallet-button-custom';
+export { WalletStatus } from '@/components/wallet-status';
+export { WalletDebugStatus } from '@/components/wallet-debug-status';
+export { NetworkSwitcher } from '@/components/network-switcher';
 
-  return (
-    <button
-      onClick={handleClick}
-      disabled={wallet.isConnecting}
-      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-    >
-      {wallet.isConnecting ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}
-    </button>
-  );
-}
-
-// Alternative wallet button component
-export function SuiWalletButtonCustom() {
-  const wallet = useCurrentWallet();
-  const { mutate: connect } = useConnectWallet();
-  const { mutate: disconnect } = useDisconnectWallet();
-  const wallets = useWallets();
-  
-  const handleClick = async () => {
-    try {
-      if (wallet.isConnected) {
-        disconnect();
-      } else {
-        if (wallets.length > 0) {
-          connect({ wallet: wallets[0] });
-        }
-      }
-    } catch (error) {
-      console.error('Wallet operation failed:', error);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={wallet.isConnecting}
-      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-    >
-      {wallet.isConnecting ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}
-    </button>
-  );
-}
-
-// Wallet status component
-export function WalletStatus() {
-  const wallet = useCurrentWallet();
-  const { address } = useWalletAdapter();
-  
-  if (wallet.isConnecting) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-        <span className="text-sm">Connecting...</span>
-      </div>
-    );
-  }
-  
-  if (wallet.isConnected && address) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-green-500 rounded-full" />
-        <span className="text-sm font-mono">
-          {address.slice(0, 6)}...{address.slice(-4)}
-        </span>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-2 h-2 bg-red-500 rounded-full" />
-      <span className="text-sm">Not connected</span>
-    </div>
-  );
-}
-
-// Debug wallet status component
-export function WalletDebugStatus() {
-  const wallet = useCurrentWallet();
-  const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
-  const { currentNetwork } = useNetwork();
-  
-  return (
-    <div className="border border-orange-200 bg-orange-50 p-3 rounded-lg text-xs space-y-1">
-      <div className="font-semibold text-orange-800">錢包調試資訊</div>
-      <div>isConnected: {wallet.isConnected ? 'true' : 'false'}</div>
-      <div>isConnecting: {wallet.isConnecting ? 'true' : 'false'}</div>
-      <div>currentWallet: {wallet.currentWallet ? '存在' : 'null'}</div>
-      <div>firstAccount: {wallet.currentWallet?.accounts?.[0]?.address || 'null'}</div>
-      <div>accounts: {wallet.currentWallet?.accounts?.length || 0}</div>
-      <div>address (adapter): {address || 'null'}</div>
-      <div>currentNetwork: {currentNetwork}</div>
-      <div>hasSignFunction: {signAndExecuteTransactionBlock !== undefined ? 'true' : 'false'}</div>
-      <div>connected (adapter): {connected ? 'true' : 'false'}</div>
-    </div>
-  );
-}
 
 // Export official components from dapp-kit
 export { ConnectButton, useSuiClient, useSuiClientQuery };
