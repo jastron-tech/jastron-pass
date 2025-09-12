@@ -25,8 +25,13 @@ interface WalletContextType {
   connected: boolean;
   connecting: boolean;
   address: string | null;
-  disconnect: () => Promise<void>;
-  signAndExecuteTransactionBlock: (transactionBlock: unknown) => Promise<unknown>;
+  accounts: readonly { address: string; publicKey: string }[];
+  connect: () => void;
+  disconnect: () => void;
+  switchToAccount: (account: { address: string }) => Promise<unknown>;
+  signAndExecuteTransactionBlock: ({ transaction, chain }: { transaction: Transaction; chain: string }) => Promise<unknown>;
+  executeTransaction: (transaction: Transaction) => Promise<unknown>;
+  suiClient: ReturnType<typeof getSuiClient>;
 }
 
 const WalletContext = createContext<WalletContextType | null>(null);
@@ -41,42 +46,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Wallet provider component
-export function SuiWalletProvider({ children }: { children: ReactNode }) {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <NetworkProvider>
-        <SuiClientProvider
-          networks={{
-            testnet: { url: 'https://fullnode.testnet.sui.io:443' },
-            mainnet: { url: 'https://fullnode.mainnet.sui.io:443' },
-            devnet: { url: 'https://fullnode.devnet.sui.io:443' },
-          }}
-          defaultNetwork="testnet"
-        >
-          <WalletProvider
-            autoConnect={false}
-            storageKey="sui-wallet-adapter"
-          >
-            {children}
-          </WalletProvider>
-        </SuiClientProvider>
-      </NetworkProvider>
-    </QueryClientProvider>
-  );
-}
-
-// Wallet hook
-export function useSuiWallet(): WalletContextType {
-  const context = useContext(WalletContext);
-  if (!context) {
-    throw new Error('useSuiWallet must be used within a SuiWalletProvider');
-  }
-  return context;
-}
-
-// Wallet adapter hook
-export function useWalletAdapter() {
+// Internal wallet provider component that provides context
+function WalletContextProvider({ children }: { children: ReactNode }) {
   const { currentNetwork } = useNetwork();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const { mutate: switchAccount } = useSwitchAccount();
@@ -92,22 +63,24 @@ export function useWalletAdapter() {
   
   // Initialize current account address when accounts are first loaded
   useEffect(() => {
-    if (accounts && accounts.length > 0 && !currentAccountAddress) {
-      // Set the first account as default if no current account is set
-      setCurrentAccountAddress(accounts[0].address);
-      console.log('Initialized current account:', accounts[0].address);
+    if (accounts && accounts.length > 0) {
+      // Always update to the first account if no current account is set
+      // or if the current account is not in the accounts list
+      if (!currentAccountAddress || !accounts.find(acc => acc.address === currentAccountAddress)) {
+        setCurrentAccountAddress(accounts[0].address);
+        console.log('Initialized/Updated current account:', accounts[0].address);
+      }
     }
   }, [accounts, currentAccountAddress]);
   
-  // Log accounts changes
+  // Reset current account when wallet disconnects
   useEffect(() => {
-    console.log('Accounts updated:', {
-      accountsCount: accounts?.length || 0,
-      currentAccount: currentAccountAddress,
-      allAccounts: accounts?.map(acc => acc.address) || []
-    });
-  }, [accounts, currentAccountAddress]);
-  
+    if (!wallet.isConnected && currentAccountAddress) {
+      setCurrentAccountAddress(null);
+      console.log('Reset current account due to disconnection');
+    }
+  }, [wallet.isConnected, currentAccountAddress]);
+
   // Get signAndExecuteTransactionBlock from the wallet's features
   const signAndExecuteTransactionBlock = ({
     transaction,
@@ -115,38 +88,21 @@ export function useWalletAdapter() {
   }: {
     transaction: Transaction;
     chain: string;
-  }): Promise<{
-    digest: string;
-    effects: string;
-  }> => {
-    return new Promise((resolve, reject) => {
-      signAndExecuteTransaction({
-        transaction: transaction,
-        chain: `sui:${chain}`,
-      }, {
-        onSuccess: (result) => {
-          resolve(result);
-        },
-        onError: (error) => {
-          reject(error);
-        }
-      });
+  }) => {
+    return signAndExecuteTransaction({
+      transaction,
+      chain: `sui:${chain}` as `${string}:${string}`,
     });
   };
-  
-  // Helper function to execute transactions using the wallet's signAndExecuteTransactionBlock method
+
+  // Execute transaction helper
   const executeTransaction = async (transaction: Transaction) => {
-    if (!wallet.currentWallet) {
-      throw new Error('錢包未連接');
-    }
-    
     if (!signAndExecuteTransactionBlock) {
-      throw new Error('錢包不支援交易簽名功能');
+      throw new Error('Wallet not connected or signAndExecuteTransactionBlock not available');
     }
     
-    // Use the wallet's signAndExecuteTransactionBlock method
     const result = await signAndExecuteTransactionBlock({
-      transaction: transaction,
+      transaction,
       chain: currentNetwork,
     });
     console.log('交易结果:', result);
@@ -157,7 +113,7 @@ export function useWalletAdapter() {
   const switchToAccount = (account: { address: string }) => {
     return new Promise((resolve, reject) => {
       console.log('Attempting to switch to account:', account.address);
-      console.log('Current wallet before switch:', wallet.currentWallet?.accounts?.[0]?.address);
+      console.log('Current address before switch:', currentAccountAddress);
       
       // Find the full account object from the accounts list
       const fullAccount = accounts.find(acc => acc.address === account.address);
@@ -188,7 +144,7 @@ export function useWalletAdapter() {
   };
 
   // Get current account address - use tracked current account
-  const currentAddress = currentAccountAddress;
+  const currentAddress = useMemo(() => currentAccountAddress, [currentAccountAddress]);
   
   // Debug logging
   console.log('Wallet adapter debug:', {
@@ -200,22 +156,78 @@ export function useWalletAdapter() {
     allAccounts: accounts?.map(acc => acc.address) || []
   });
 
-  return {
+  const contextValue: WalletContextType = {
     connected: wallet.isConnected,
     connecting: wallet.isConnecting,
     address: currentAddress,
-    accounts: accounts || [],
+    accounts: (accounts || []).map(acc => ({
+      address: acc.address,
+      publicKey: acc.publicKey.toString()
+    })) as readonly { address: string; publicKey: string }[],
     connect: () => {
       if (wallets.length > 0) {
         connect({ wallet: wallets[0] });
       }
     },
-    disconnect: () => disconnect(),
+    disconnect: () => {
+      disconnect();
+    },
     switchToAccount,
-    signAndExecuteTransactionBlock: signAndExecuteTransactionBlock || undefined,
-    executeTransaction,
+    signAndExecuteTransactionBlock: signAndExecuteTransactionBlock as ({ transaction, chain }: { transaction: Transaction; chain: string }) => Promise<unknown>,
+    executeTransaction: executeTransaction as (transaction: Transaction) => Promise<unknown>,
     suiClient,
   };
+
+  return (
+    <WalletContext.Provider value={contextValue}>
+      {children}
+    </WalletContext.Provider>
+  );
+}
+
+// Wallet provider component
+export function SuiWalletProvider({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <NetworkProvider>
+        <SuiClientProvider
+          networks={{
+            testnet: { url: 'https://fullnode.testnet.sui.io:443' },
+            mainnet: { url: 'https://fullnode.mainnet.sui.io:443' },
+            devnet: { url: 'https://fullnode.devnet.sui.io:443' },
+          }}
+          defaultNetwork="testnet"
+        >
+          <WalletProvider
+            autoConnect={false}
+            storageKey="sui-wallet-adapter"
+          >
+            <WalletContextProvider>
+              {children}
+            </WalletContextProvider>
+          </WalletProvider>
+        </SuiClientProvider>
+      </NetworkProvider>
+    </QueryClientProvider>
+  );
+}
+
+// Wallet hook
+export function useSuiWallet(): WalletContextType {
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useSuiWallet must be used within a SuiWalletProvider');
+  }
+  return context;
+}
+
+// Wallet adapter hook - now uses context
+export function useWalletAdapter(): WalletContextType {
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useWalletAdapter must be used within a SuiWalletProvider');
+  }
+  return context;
 }
 
 // Wallet button component using official ConnectButton
