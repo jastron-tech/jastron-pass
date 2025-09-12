@@ -129,6 +129,20 @@ export const GAS_CONFIG = {
 } as const;
 
 
-export const PACKAGE_ID = JASTRON_PASS_PACKAGE[CURRENT_NETWORK].PACKAGE_ID;
-export const PLATFORM_ID = JASTRON_PASS_PACKAGE[CURRENT_NETWORK].PLATFORM_ID;
-export const PUBLISHER_ID = JASTRON_PASS_PACKAGE[CURRENT_NETWORK].PUBLISHER_ID;
+// Dynamic contract IDs based on current network
+export function getPackageId(network: SuiNetwork = CURRENT_NETWORK): string {
+  return JASTRON_PASS_PACKAGE[network].PACKAGE_ID;
+}
+
+export function getPlatformId(network: SuiNetwork = CURRENT_NETWORK): string {
+  return JASTRON_PASS_PACKAGE[network].PLATFORM_ID;
+}
+
+export function getPublisherId(network: SuiNetwork = CURRENT_NETWORK): string {
+  return JASTRON_PASS_PACKAGE[network].PUBLISHER_ID;
+}
+
+// Legacy exports for backward compatibility (deprecated)
+export const PACKAGE_ID = getPackageId();
+export const PLATFORM_ID = getPlatformId();
+export const PUBLISHER_ID = getPublisherId();

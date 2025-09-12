@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   useWalletAdapter, 
   WalletStatus,
-  jastronPassContract,
+  createContract,
   formatAddress,
   formatBalance,
   CURRENT_NETWORK,
 } from '@/lib/sui';
-import { JASTRON_PASS_PACKAGE, PACKAGE_ID } from '@/lib/sui-config';
+import { JASTRON_PASS_PACKAGE, getPackageId } from '@/lib/sui-config';
 import { AccountSwitcher } from '@/components/account-switcher';
+import { useNetwork } from '@/lib/network-context';
 
 interface OrganizerProfile {
   id: string;
@@ -51,6 +52,8 @@ export default function OrganizerPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
+  const { currentNetwork } = useNetwork();
+  const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
   
   // Activity creation form
   const [activityForm, setActivityForm] = useState({
@@ -80,7 +83,7 @@ export default function OrganizerPage() {
 
       // Step 2: Find OrganizerCap object
       const organizerCapObject = objects.data.find(obj => 
-        obj.data?.type?.includes(`${PACKAGE_ID}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.STRUCTS.ORGANIZER_CAP}`)
+        obj.data?.type?.includes(`${getPackageId(currentNetwork)}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.STRUCTS.ORGANIZER_CAP}`)
       );
 
       if (!organizerCapObject?.data?.content) {

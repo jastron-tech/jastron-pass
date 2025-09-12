@@ -12,9 +12,11 @@ import {
   WalletStatus,
   formatAddress,
   formatBalance,
-  CURRENT_NETWORK,
+  useContractIds,
+  useNetwork,
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
+import { NetworkSwitcher } from '@/components/network-switcher';
 
 interface PlatformInfo {
   id: string;
@@ -39,6 +41,8 @@ interface TransactionRecord {
 
 export default function PlatformPage() {
   const { connected, address, signAndExecuteTransactionBlock, suiClient } = useWalletAdapter();
+  const { packageId, platformId, publisherId } = useContractIds();
+  const { currentNetwork } = useNetwork();
   
   // State
   const [platformInfo, setPlatformInfo] = useState<PlatformInfo | null>(null);
@@ -249,6 +253,7 @@ export default function PlatformPage() {
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
       <AccountSwitcher />
+      <NetworkSwitcher />
 
       {/* Network Status Card */}
       <Card>
@@ -262,11 +267,22 @@ export default function PlatformPage() {
           <div className="flex items-center gap-2">
             <Label className="font-medium">當前網路:</Label>
             <Badge variant="outline" className="capitalize">
-              {CURRENT_NETWORK}
+              {currentNetwork}
             </Badge>
           </div>
           <div className="mt-2 text-sm text-muted-foreground">
             錢包地址: {address ? formatAddress(address) : '未連接'}
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium">Package ID:</span> {formatAddress(packageId)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium">Platform ID:</span> {formatAddress(platformId)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium">Publisher ID:</span> {formatAddress(publisherId)}
+            </div>
           </div>
         </CardContent>
       </Card>

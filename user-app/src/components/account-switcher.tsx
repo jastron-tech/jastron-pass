@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWalletAdapter } from '@/lib/wallet-adapter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,14 +12,23 @@ export function AccountSwitcher() {
   const { connected, address, accounts, switchToAccount } = useWalletAdapter();
   const [switching, setSwitching] = useState(false);
 
-  const handleSwitchAccount = async (account: any) => {
+  // Force re-render when address changes (but avoid infinite loops)
+  useEffect(() => {
+    if (address) {
+      console.log('Address changed, forcing re-render:', address);
+    }
+  }, [address]);
+
+  const handleSwitchAccount = async (account: { address: string }) => {
     if (account.address === address) {
       return; // Already on this account
     }
 
     setSwitching(true);
     try {
+      console.log('Switching to account:', account.address);
       await switchToAccount(account);
+      console.log('Account switch completed');
     } catch (error) {
       console.error('Failed to switch account:', error);
     } finally {

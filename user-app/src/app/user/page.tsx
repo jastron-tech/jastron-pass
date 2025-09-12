@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,14 +11,14 @@ import {
   useWalletAdapter, 
   WalletStatus,
   WalletDebugStatus,
-  jastronPassContract,
   formatAddress,
   formatBalance,
-  CURRENT_NETWORK,
+  createContract,
   JASTRON_PASS_PACKAGE,
-  PACKAGE_ID
+  getPackageId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
+import { useNetwork } from '@/lib/network-context';
 
 interface UserProfile {
   id: string;
@@ -52,7 +52,8 @@ export default function UserPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [searchActivityId, setSearchActivityId] = useState('');
-  const [currentNetwork] = useState<string>(CURRENT_NETWORK);
+  const { currentNetwork } = useNetwork();
+  const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
 
   const loadUserProfile = useCallback(async () => {
     if (!address || !suiClient) return;
@@ -73,7 +74,7 @@ export default function UserPage() {
 
       // Step 2: Find UserCap object
       const userCapObject = objects.data.find(obj => 
-        obj.data?.type?.includes(`${PACKAGE_ID}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.STRUCTS.USER_CAP}`)
+        obj.data?.type?.includes(`${getPackageId(currentNetwork)}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.STRUCTS.USER_CAP}`)
       );
 
       if (!userCapObject?.data?.content) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
   WalletProvider, 
@@ -17,7 +17,8 @@ import {
   useAccounts,
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-import { CURRENT_NETWORK } from './sui-config';
+// import { CURRENT_NETWORK } from './sui-config'; // Now using network context
+import { useNetwork, NetworkProvider } from './network-context';
 
 // Wallet context
 interface WalletContextType {
@@ -44,21 +45,23 @@ const queryClient = new QueryClient({
 export function SuiWalletProvider({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider
-        networks={{
-          testnet: { url: 'https://fullnode.testnet.sui.io:443' },
-          mainnet: { url: 'https://fullnode.mainnet.sui.io:443' },
-          devnet: { url: 'https://fullnode.devnet.sui.io:443' },
-        }}
-        defaultNetwork="testnet"
-      >
-        <WalletProvider
-          autoConnect={false}
-          storageKey="sui-wallet-adapter"
+      <NetworkProvider>
+        <SuiClientProvider
+          networks={{
+            testnet: { url: 'https://fullnode.testnet.sui.io:443' },
+            mainnet: { url: 'https://fullnode.mainnet.sui.io:443' },
+            devnet: { url: 'https://fullnode.devnet.sui.io:443' },
+          }}
+          defaultNetwork="testnet"
         >
-          {children}
-        </WalletProvider>
-      </SuiClientProvider>
+          <WalletProvider
+            autoConnect={false}
+            storageKey="sui-wallet-adapter"
+          >
+            {children}
+          </WalletProvider>
+        </SuiClientProvider>
+      </NetworkProvider>
     </QueryClientProvider>
   );
 }
@@ -82,6 +85,28 @@ export function useWalletAdapter() {
   const { mutate: disconnect } = useDisconnectWallet();
   const wallets = useWallets();
   const suiClient = useSuiClient();
+  const { currentNetwork } = useNetwork();
+  
+  // State to track current account address
+  const [currentAccountAddress, setCurrentAccountAddress] = useState<string | null>(null);
+  
+  // Initialize current account address when accounts are first loaded
+  useEffect(() => {
+    if (accounts && accounts.length > 0 && !currentAccountAddress) {
+      // Set the first account as default if no current account is set
+      setCurrentAccountAddress(accounts[0].address);
+      console.log('Initialized current account:', accounts[0].address);
+    }
+  }, [accounts, currentAccountAddress]);
+  
+  // Log accounts changes
+  useEffect(() => {
+    console.log('Accounts updated:', {
+      accountsCount: accounts?.length || 0,
+      currentAccount: currentAccountAddress,
+      allAccounts: accounts?.map(acc => acc.address) || []
+    });
+  }, [accounts, currentAccountAddress]);
   
   // Get signAndExecuteTransactionBlock from the wallet's features
   const signAndExecuteTransactionBlock = ({
@@ -122,21 +147,35 @@ export function useWalletAdapter() {
     // Use the wallet's signAndExecuteTransactionBlock method
     const result = await signAndExecuteTransactionBlock({
       transaction: transaction,
-      chain: CURRENT_NETWORK,
+      chain: currentNetwork,
     });
     console.log('交易结果:', result);
     return result;
   };
 
   // Helper function to switch account
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const switchToAccount = (account: any) => {
+  const switchToAccount = (account: { address: string }) => {
     return new Promise((resolve, reject) => {
+      console.log('Attempting to switch to account:', account.address);
+      console.log('Current wallet before switch:', wallet.currentWallet?.accounts?.[0]?.address);
+      
+      // Find the full account object from the accounts list
+      const fullAccount = accounts.find(acc => acc.address === account.address);
+      if (!fullAccount) {
+        console.error('Account not found in accounts list:', account.address);
+        reject(new Error('Account not found'));
+        return;
+      }
+      
+      // Use the correct parameter format for useSwitchAccount
       switchAccount(
-        { account },
+        { account: fullAccount },
         {
           onSuccess: (result) => {
             console.log(`Switched to account: ${account.address}`);
+            console.log('Switch result:', result);
+            // Update the current account address
+            setCurrentAccountAddress(account.address);
             resolve(result);
           },
           onError: (error) => {
@@ -148,10 +187,23 @@ export function useWalletAdapter() {
     });
   };
 
+  // Get current account address - use tracked current account
+  const currentAddress = currentAccountAddress;
+  
+  // Debug logging
+  console.log('Wallet adapter debug:', {
+    isConnected: wallet.isConnected,
+    currentWallet: wallet.currentWallet?.name,
+    accountsCount: accounts?.length || 0,
+    currentAccount: currentAccountAddress,
+    currentAddress,
+    allAccounts: accounts?.map(acc => acc.address) || []
+  });
+
   return {
     connected: wallet.isConnected,
     connecting: wallet.isConnecting,
-    address: wallet.currentWallet?.accounts[0]?.address || null,
+    address: currentAddress,
     accounts: accounts || [],
     connect: () => {
       if (wallets.length > 0) {
@@ -239,7 +291,7 @@ export function SuiWalletButtonCustom() {
 // Wallet status component
 export function WalletStatus() {
   const wallet = useCurrentWallet();
-  const address = wallet.currentWallet?.accounts[0]?.address;
+  const { address } = useWalletAdapter();
   
   if (wallet.isConnecting) {
     return (
@@ -273,6 +325,7 @@ export function WalletStatus() {
 export function WalletDebugStatus() {
   const wallet = useCurrentWallet();
   const { connected, address, signAndExecuteTransactionBlock } = useWalletAdapter();
+  const { currentNetwork } = useNetwork();
   
   return (
     <div className="border border-orange-200 bg-orange-50 p-3 rounded-lg text-xs space-y-1">
@@ -280,8 +333,10 @@ export function WalletDebugStatus() {
       <div>isConnected: {wallet.isConnected ? 'true' : 'false'}</div>
       <div>isConnecting: {wallet.isConnecting ? 'true' : 'false'}</div>
       <div>currentWallet: {wallet.currentWallet ? '存在' : 'null'}</div>
+      <div>firstAccount: {wallet.currentWallet?.accounts?.[0]?.address || 'null'}</div>
       <div>accounts: {wallet.currentWallet?.accounts?.length || 0}</div>
-      <div>address: {address || 'null'}</div>
+      <div>address (adapter): {address || 'null'}</div>
+      <div>currentNetwork: {currentNetwork}</div>
       <div>hasSignFunction: {signAndExecuteTransactionBlock !== undefined ? 'true' : 'false'}</div>
       <div>connected (adapter): {connected ? 'true' : 'false'}</div>
     </div>
