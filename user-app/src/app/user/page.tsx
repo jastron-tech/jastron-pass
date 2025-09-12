@@ -18,6 +18,7 @@ import {
   getPackageId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
+import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
 
 interface UserProfile {
@@ -52,6 +53,7 @@ export default function UserPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [searchActivityId, setSearchActivityId] = useState('');
+  const [suiBalance, setSuiBalance] = useState<string>('0');
   const { currentNetwork } = useNetwork();
   const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
 
@@ -200,14 +202,34 @@ export default function UserPage() {
     }
   }, [suiClient]);
 
+  const loadSuiBalance = useCallback(async () => {
+    if (!address || !suiClient) return;
+    
+    try {
+      console.log('Loading SUI balance for address:', address);
+      
+      const balance = await suiClient.getBalance({
+        owner: address,
+        coinType: '0x2::sui::SUI'
+      });
+      
+      setSuiBalance(balance.totalBalance);
+      console.log('SUI balance loaded:', balance.totalBalance);
+    } catch (error) {
+      console.error('Failed to load SUI balance:', error);
+      setResult(`載入 SUI 餘額失敗: ${error}`);
+    }
+  }, [address, suiClient]);
+
   // Load user data
   useEffect(() => {
     if (connected && address) {
       loadUserProfile();
       loadUserTickets();
       loadAvailableActivities();
+      loadSuiBalance();
     }
-  }, [connected, address, loadUserProfile, loadUserTickets, loadAvailableActivities]);
+  }, [connected, address, loadUserProfile, loadUserTickets, loadAvailableActivities, loadSuiBalance]);
 
   const handleRegisterUser = async () => {
     console.log('Register user - Wallet state:', { 
@@ -327,27 +349,41 @@ export default function UserPage() {
       <WalletStatus />
       <WalletDebugStatus />
       <AccountSwitcher />
+      <NetworkSwitcher />
 
-      {/* Network Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>網路狀態</CardTitle>
-          <CardDescription>
-            當前連接的 Sui 網路資訊
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2">
-            <Label className="font-medium">當前網路:</Label>
-            <Badge variant="outline" className="capitalize">
-              {currentNetwork}
-            </Badge>
-          </div>
-          <div className="mt-2 text-sm text-muted-foreground">
-            錢包地址: {address ? formatAddress(address) : '未連接'}
-          </div>
-        </CardContent>
-      </Card>
+      {/* SUI Balance Card */}
+      {connected && address && (
+        <Card>
+          <CardHeader>
+            <CardTitle>錢包餘額</CardTitle>
+            <CardDescription>
+              當前連接地址的 SUI 餘額
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Label className="font-medium">地址:</Label>
+              <Badge variant="outline">{formatAddress(address)}</Badge>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Label className="font-medium">SUI 餘額:</Label>
+              <Badge variant="default" className="text-lg font-bold">
+                {formatBalance(suiBalance)} SUI
+              </Badge>
+            </div>
+            <div className="mt-2">
+              <Button 
+                onClick={loadSuiBalance} 
+                disabled={loading}
+                variant="outline"
+                size="sm"
+              >
+                {loading ? '載入中...' : '重新整理餘額'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {result && (
         <Card>
@@ -360,7 +396,7 @@ export default function UserPage() {
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>
           <TabsTrigger value="profile">個人資料</TabsTrigger>
-          <TabsTrigger value="tickets">我的票券</TabsTrigger>
+          {userProfile && <TabsTrigger value="tickets">我的票券</TabsTrigger>}
           <TabsTrigger value="activities">活動瀏覽</TabsTrigger>
         </TabsList>
 
@@ -417,45 +453,60 @@ export default function UserPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <Button 
-                  onClick={loadUserTickets} 
-                  disabled={!connected || loading}
-                  variant="outline"
-                >
-                  {loading ? '載入中...' : '重新整理票券'}
-                </Button>
-                
-                {userTickets.length > 0 ? (
-                  <div className="grid gap-4">
-                    {userTickets.map((ticket, index) => (
-                      <Card key={ticket.id}>
-                        <CardContent className="pt-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="font-medium">票券 #{index + 1}</Label>
-                              <Badge variant={ticket.redeemed_at > 0 ? "destructive" : "default"}>
-                                {ticket.redeemed_at > 0 ? "已使用" : "未使用"}
-                              </Badge>
+              {userProfile ? (
+                <div className="space-y-4">
+                  <Button 
+                    onClick={loadUserTickets} 
+                    disabled={!connected || loading}
+                    variant="outline"
+                  >
+                    {loading ? '載入中...' : '重新整理票券'}
+                  </Button>
+                  
+                  {userTickets.length > 0 ? (
+                    <div className="grid gap-4">
+                      {userTickets.map((ticket, index) => (
+                        <Card key={ticket.id}>
+                          <CardContent className="pt-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="font-medium">票券 #{index + 1}</Label>
+                                <Badge variant={ticket.redeemed_at > 0 ? "destructive" : "default"}>
+                                  {ticket.redeemed_at > 0 ? "已使用" : "未使用"}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                <p>票券ID: {formatAddress(ticket.id)}</p>
+                                <p>活動ID: {formatAddress(ticket.activity_id)}</p>
+                                {ticket.redeemed_at > 0 && (
+                                  <p>使用時間: {new Date(ticket.redeemed_at).toLocaleString()}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              <p>票券ID: {formatAddress(ticket.id)}</p>
-                              <p>活動ID: {formatAddress(ticket.activity_id)}</p>
-                              {ticket.redeemed_at > 0 && (
-                                <p>使用時間: {new Date(ticket.redeemed_at).toLocaleString()}</p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      您還沒有任何票券
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    您還沒有任何票券
+                    請先註冊用戶資料才能查看票券
                   </p>
-                )}
-              </div>
+                  <Button 
+                    onClick={handleRegisterUser} 
+                    disabled={!connected || loading}
+                    className="w-full"
+                  >
+                    {loading ? '註冊中...' : '註冊用戶資料'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

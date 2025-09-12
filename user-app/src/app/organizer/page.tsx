@@ -13,10 +13,10 @@ import {
   createContract,
   formatAddress,
   formatBalance,
-  CURRENT_NETWORK,
 } from '@/lib/sui';
 import { JASTRON_PASS_PACKAGE, getPackageId } from '@/lib/sui-config';
 import { AccountSwitcher } from '@/components/account-switcher';
+import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
 
 interface OrganizerProfile {
@@ -52,6 +52,7 @@ export default function OrganizerPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
+  const [suiBalance, setSuiBalance] = useState<string>('0');
   const { currentNetwork } = useNetwork();
   const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
   
@@ -200,14 +201,34 @@ export default function OrganizerPage() {
     }
   }, [suiClient]);
 
+  const loadSuiBalance = useCallback(async () => {
+    if (!address || !suiClient) return;
+    
+    try {
+      console.log('Loading SUI balance for address:', address);
+      
+      const balance = await suiClient.getBalance({
+        owner: address,
+        coinType: '0x2::sui::SUI'
+      });
+      
+      setSuiBalance(balance.totalBalance);
+      console.log('SUI balance loaded:', balance.totalBalance);
+    } catch (error) {
+      console.error('Failed to load SUI balance:', error);
+      setResult(`載入 SUI 餘額失敗: ${error}`);
+    }
+  }, [address, suiClient]);
+
   // Load organizer data
   useEffect(() => {
     if (connected && address) {
       loadOrganizerProfile();
       loadOrganizerStats();
       loadActivities();
+      loadSuiBalance();
     }
-  }, [connected, address, loadOrganizerProfile, loadOrganizerStats, loadActivities]);
+  }, [connected, address, loadOrganizerProfile, loadOrganizerStats, loadActivities, loadSuiBalance]);
 
   const handleRegisterOrganizer = async () => {
     console.log('Register organizer - Wallet state:', { 
@@ -338,27 +359,41 @@ export default function OrganizerPage() {
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
       <AccountSwitcher />
+      <NetworkSwitcher />
 
-      {/* Network Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>網路狀態</CardTitle>
-          <CardDescription>
-            當前連接的 Sui 網路資訊
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2">
-            <Label className="font-medium">當前網路:</Label>
-            <Badge variant="outline" className="capitalize">
-              {CURRENT_NETWORK}
-            </Badge>
-          </div>
-          <div className="mt-2 text-sm text-muted-foreground">
-            錢包地址: {address ? formatAddress(address) : '未連接'}
-          </div>
-        </CardContent>
-      </Card>
+      {/* SUI Balance Card */}
+      {connected && address && (
+        <Card>
+          <CardHeader>
+            <CardTitle>錢包餘額</CardTitle>
+            <CardDescription>
+              當前連接地址的 SUI 餘額
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Label className="font-medium">地址:</Label>
+              <Badge variant="outline">{formatAddress(address)}</Badge>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Label className="font-medium">SUI 餘額:</Label>
+              <Badge variant="default" className="text-lg font-bold">
+                {formatBalance(suiBalance)} SUI
+              </Badge>
+            </div>
+            <div className="mt-2">
+              <Button 
+                onClick={loadSuiBalance} 
+                disabled={loading}
+                variant="outline"
+                size="sm"
+              >
+                {loading ? '載入中...' : '重新整理餘額'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {result && (
         <Card>
