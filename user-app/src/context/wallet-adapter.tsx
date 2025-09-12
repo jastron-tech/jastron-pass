@@ -54,7 +54,7 @@ function WalletContextProvider({ children }: { children: ReactNode }) {
   const accounts = useAccounts();
   const wallet = useCurrentWallet();
   const { mutate: connect } = useConnectWallet();
-  const { mutate: disconnect } = useDisconnectWallet();
+  const { mutate: disconnectWallet } = useDisconnectWallet();
   const wallets = useWallets();
   const suiClient = useMemo(() => getSuiClient(currentNetwork), [currentNetwork]);
   
@@ -246,7 +246,7 @@ function WalletContextProvider({ children }: { children: ReactNode }) {
       // Clear saved address when user manually disconnects
       localStorage.removeItem('sui-current-address');
       console.log('Cleared saved address due to manual disconnect');
-      disconnect();
+      disconnectWallet();
     },
     switchToAccount,
     signAndExecuteTransactionBlock: signAndExecuteTransactionBlock as ({ transaction, chain }: { transaction: Transaction; chain: string }) => Promise<unknown>,
