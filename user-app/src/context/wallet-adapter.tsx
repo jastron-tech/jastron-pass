@@ -19,6 +19,7 @@ import {
 import { Transaction } from '@mysten/sui/transactions';
 import { useNetwork, NetworkProvider } from './network-context';
 import { getSuiClient } from '../lib/sui-client';
+import { SuiNetwork } from '../lib/sui-config';
 
 // Wallet context
 interface WalletContextType {
@@ -145,11 +146,20 @@ function WalletContextProvider({ children }: { children: ReactNode }) {
     chain
   }: {
     transaction: Transaction;
-    chain: string;
+    chain: SuiNetwork;
   }) => {
-    return signAndExecuteTransaction({
-      transaction,
-      chain: `sui:${chain}` as `${string}:${string}`,
+    return new Promise((resolve, reject) => {
+      signAndExecuteTransaction({
+        transaction,
+        chain: `sui:${chain}`,
+      }, {
+        onSuccess: (result) => {
+          resolve(result);
+        },
+        onError: (error) => {
+          reject(error);
+        }
+      });
     });
   };
 
