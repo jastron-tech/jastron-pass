@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect, useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
   WalletProvider, 
@@ -18,6 +18,7 @@ import {
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { useNetwork, NetworkProvider } from './network-context';
+import { getSuiClient } from './sui-client';
 
 // Wallet context
 interface WalletContextType {
@@ -76,6 +77,7 @@ export function useSuiWallet(): WalletContextType {
 
 // Wallet adapter hook
 export function useWalletAdapter() {
+  const { currentNetwork } = useNetwork();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const { mutate: switchAccount } = useSwitchAccount();
   const accounts = useAccounts();
@@ -83,8 +85,7 @@ export function useWalletAdapter() {
   const { mutate: connect } = useConnectWallet();
   const { mutate: disconnect } = useDisconnectWallet();
   const wallets = useWallets();
-  const suiClient = useSuiClient();
-  const { currentNetwork } = useNetwork();
+  const suiClient = useMemo(() => getSuiClient(currentNetwork), [currentNetwork]);
   
   // State to track current account address
   const [currentAccountAddress, setCurrentAccountAddress] = useState<string | null>(null);

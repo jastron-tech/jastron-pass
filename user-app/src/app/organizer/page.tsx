@@ -128,7 +128,7 @@ export default function OrganizerPage() {
     } finally {
       setLoading(false);
     }
-  }, [address, suiClient]);
+  }, [address, suiClient, currentNetwork]);
 
   const loadOrganizerStats = useCallback(async () => {
     if (!suiClient) return;
