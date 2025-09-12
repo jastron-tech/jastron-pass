@@ -1,19 +1,19 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { JASTRON_PASS_PACKAGE, GAS_CONFIG, getPackageId, getPlatformId, getPublisherId, SuiNetwork } from './sui-config';
-import { getDefaultSuiClient } from './sui-client';
+import { getSuiClient } from './sui-client';
 
 // Contract interaction utilities
 export class JastronPassContract {
   private packageId: string;
   private platformId: string;
   private publisherId: string;
-  private client: ReturnType<typeof getDefaultSuiClient>;
+  private client: ReturnType<typeof getSuiClient>;
 
-  constructor(network: SuiNetwork = 'testnet') {
+  constructor(network: SuiNetwork) {
     this.packageId = getPackageId(network);
     this.platformId = getPlatformId(network);
     this.publisherId = getPublisherId(network);
-    this.client = getDefaultSuiClient();
+    this.client = getSuiClient(network);
   }
 
   // Create transaction
@@ -339,6 +339,6 @@ export class JastronPassContract {
 }
 
 // Create contract instance
-export function createContract(packageId: string) {
+export function createContract(packageId: SuiNetwork) {
   return new JastronPassContract(packageId);
 }

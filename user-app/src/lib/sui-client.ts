@@ -1,5 +1,5 @@
 import { SuiClient } from '@mysten/sui.js/client';
-import { SUI_NETWORKS, CURRENT_NETWORK, type SuiNetwork } from './sui-config';
+import { SUI_NETWORKS, type SuiNetwork } from './sui-config';
 
 // Sui client instances for different networks
 const clients: Record<SuiNetwork, SuiClient> = {
@@ -9,13 +9,8 @@ const clients: Record<SuiNetwork, SuiClient> = {
 };
 
 // Get Sui client for specific network
-export function getSuiClient(network: SuiNetwork = CURRENT_NETWORK): SuiClient {
+export function getSuiClient(network: SuiNetwork): SuiClient {
   return clients[network];
-}
-
-// Get default Sui client
-export function getDefaultSuiClient(): SuiClient {
-  return getSuiClient(CURRENT_NETWORK);
 }
 
 // Network utilities
@@ -28,7 +23,7 @@ export function getAllNetworks(): SuiNetwork[] {
 }
 
 // Client health check
-export async function checkClientHealth(network: SuiNetwork = CURRENT_NETWORK): Promise<boolean> {
+export async function checkClientHealth(network: SuiNetwork): Promise<boolean> {
   try {
     const client = getSuiClient(network);
     await client.getLatestSuiSystemState();
@@ -40,7 +35,7 @@ export async function checkClientHealth(network: SuiNetwork = CURRENT_NETWORK): 
 }
 
 // Get network info
-export async function getNetworkInfo(network: SuiNetwork = CURRENT_NETWORK) {
+export async function getNetworkInfo(network: SuiNetwork) {
   try {
     const client = getSuiClient(network);
     const systemState = await client.getLatestSuiSystemState();

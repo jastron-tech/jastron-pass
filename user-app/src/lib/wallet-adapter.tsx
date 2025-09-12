@@ -17,7 +17,6 @@ import {
   useAccounts,
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
-// import { CURRENT_NETWORK } from './sui-config'; // Now using network context
 import { useNetwork, NetworkProvider } from './network-context';
 
 // Wallet context
