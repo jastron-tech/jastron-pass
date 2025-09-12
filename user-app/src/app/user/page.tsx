@@ -18,6 +18,7 @@ import {
   JASTRON_PASS_PACKAGE,
   PACKAGE_ID
 } from '@/lib/sui';
+import { AccountSwitcher } from '@/components/account-switcher';
 
 interface UserProfile {
   id: string;
@@ -324,6 +325,7 @@ export default function UserPage() {
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
       <WalletDebugStatus />
+      <AccountSwitcher />
 
       {/* Network Status Card */}
       <Card>

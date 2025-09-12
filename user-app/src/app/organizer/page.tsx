@@ -16,6 +16,7 @@ import {
   CURRENT_NETWORK,
 } from '@/lib/sui';
 import { JASTRON_PASS_PACKAGE, PACKAGE_ID } from '@/lib/sui-config';
+import { AccountSwitcher } from '@/components/account-switcher';
 
 interface OrganizerProfile {
   id: string;
@@ -333,6 +334,7 @@ export default function OrganizerPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
+      <AccountSwitcher />
 
       {/* Network Status Card */}
       <Card>

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, ReactNode, useState } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
   WalletProvider, 
@@ -13,6 +13,8 @@ import {
   useWallets,
   SuiClientProvider,
   useSignAndExecuteTransaction,
+  useSwitchAccount,
+  useAccounts,
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { CURRENT_NETWORK } from './sui-config';
@@ -73,7 +75,8 @@ export function useSuiWallet(): WalletContextType {
 // Wallet adapter hook
 export function useWalletAdapter() {
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-	const [digest, setDigest] = useState('');
+  const { mutate: switchAccount } = useSwitchAccount();
+  const accounts = useAccounts();
   const wallet = useCurrentWallet();
   const { mutate: connect } = useConnectWallet();
   const { mutate: disconnect } = useDisconnectWallet();
@@ -97,7 +100,6 @@ export function useWalletAdapter() {
         chain: `sui:${chain}`,
       }, {
         onSuccess: (result) => {
-          setDigest(result.digest);
           resolve(result);
         },
         onError: (error) => {
@@ -123,20 +125,41 @@ export function useWalletAdapter() {
       chain: CURRENT_NETWORK,
     });
     console.log('交易结果:', result);
-    setDigest(result.digest);
     return result;
+  };
+
+  // Helper function to switch account
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const switchToAccount = (account: any) => {
+    return new Promise((resolve, reject) => {
+      switchAccount(
+        { account },
+        {
+          onSuccess: (result) => {
+            console.log(`Switched to account: ${account.address}`);
+            resolve(result);
+          },
+          onError: (error) => {
+            console.error('Failed to switch account:', error);
+            reject(error);
+          }
+        }
+      );
+    });
   };
 
   return {
     connected: wallet.isConnected,
     connecting: wallet.isConnecting,
     address: wallet.currentWallet?.accounts[0]?.address || null,
+    accounts: accounts || [],
     connect: () => {
       if (wallets.length > 0) {
         connect({ wallet: wallets[0] });
       }
     },
     disconnect: () => disconnect(),
+    switchToAccount,
     signAndExecuteTransactionBlock: signAndExecuteTransactionBlock || undefined,
     executeTransaction,
     suiClient,

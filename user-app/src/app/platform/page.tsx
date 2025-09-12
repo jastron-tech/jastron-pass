@@ -14,6 +14,7 @@ import {
   formatBalance,
   CURRENT_NETWORK,
 } from '@/lib/sui';
+import { AccountSwitcher } from '@/components/account-switcher';
 
 interface PlatformInfo {
   id: string;
@@ -247,6 +248,7 @@ export default function PlatformPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
+      <AccountSwitcher />
 
       {/* Network Status Card */}
       <Card>
