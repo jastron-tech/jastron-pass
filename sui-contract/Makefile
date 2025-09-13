@@ -53,6 +53,15 @@ publish-json: ## Publish with JSON output
 active-address: ## Show active address
 	sui client active-address
 
+.PHONY: switch-address
+switch-address: ## Switch active address (usage: make switch-address ADDRESS=0x...)
+	@if [ -z "$(ADDRESS)" ]; then \
+		echo "Error: ADDRESS parameter is required"; \
+		echo "Usage: make switch-address ADDRESS=0x..."; \
+		exit 1; \
+	fi
+	sui client switch --address $(ADDRESS)
+
 .PHONY: balance
 balance: ## Show account balance
 	sui client balance

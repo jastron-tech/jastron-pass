@@ -24,21 +24,27 @@ export class JastronPassContract {
   }
 
   // App module functions
-  async registerOrganizerProfile(receiver: string) {
+  async registerOrganizerProfile(platform: string, name: string, receiver: string) {
     const tx = this.createTransaction();
     const organizerCap = tx.moveCall({
       target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
-      arguments: [],
+      arguments: [
+        tx.object(platform),
+        tx.pure.string(name),
+      ],
     });
     tx.transferObjects([organizerCap], receiver);
     return tx;
   }
 
-  async registerUserProfile(receiver: string) {
+  async registerUserProfile(platform: string, name: string, receiver: string) {
     const tx = this.createTransaction();
     const userCap = tx.moveCall({
       target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_USER_PROFILE}`,
-      arguments: [],
+      arguments: [
+        tx.object(platform),
+        tx.pure.string(name),
+      ],
     });
     
     // Transfer the returned UserCap to the receiver
@@ -49,6 +55,8 @@ export class JastronPassContract {
   async createActivity(
     organizerCap: string,
     organizerProfile: string,
+    platform: string,
+    name: string,
     totalSupply: number,
     ticketPrice: number,
     saleEndedAt: number
@@ -59,6 +67,8 @@ export class JastronPassContract {
       arguments: [
         tx.object(organizerCap),
         tx.object(organizerProfile),
+        tx.object(platform),
+        tx.pure.string(name),
         tx.pure.u64(totalSupply),
         tx.pure.u64(ticketPrice),
         tx.pure.u64(saleEndedAt),
@@ -85,6 +95,23 @@ export class JastronPassContract {
         tx.object(transferPolicy),
         tx.object(organizerProfile),
         tx.object(ticketReceiverProfile),
+      ],
+    });
+    return tx;
+  }
+
+  async attendActivity(
+    protectedTicket: string,
+    userProfile: string,
+    activity: string
+  ) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ATTEND_ACTIVITY}`,
+      arguments: [
+        tx.object(protectedTicket),
+        tx.object(userProfile),
+        tx.object(activity),
       ],
     });
     return tx;
@@ -178,6 +205,272 @@ export class JastronPassContract {
     tx.moveCall({
       target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.IS_TICKET_LISTED}`,
       arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
+    });
+    return tx;
+  }
+
+  // Platform module functions (readonly)
+  async getPlatformTreasury(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_TREASURY}`,
+      arguments: [tx.object(platform)],
+    });
+    return tx;
+  }
+
+  async isUserRegistered(platform: string, userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_USER_REGISTERED}`,
+      arguments: [tx.object(platform), tx.pure.string(userProfile)],
+    });
+    return tx;
+  }
+
+  async isOrganizerRegistered(platform: string, organizerProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_ORGANIZER_REGISTERED}`,
+      arguments: [tx.object(platform), tx.pure.string(organizerProfile)],
+    });
+    return tx;
+  }
+
+  async getRegisteredUsersCount(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_USERS_COUNT}`,
+      arguments: [tx.object(platform)],
+    });
+    return tx;
+  }
+
+  async getRegisteredOrganizersCount(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_ORGANIZERS_COUNT}`,
+      arguments: [tx.object(platform)],
+    });
+    return tx;
+  }
+
+  async getNumActivities(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_NUM_ACTIVITIES}`,
+      arguments: [tx.object(platform)],
+    });
+    return tx;
+  }
+
+  // Organizer module functions (readonly)
+  async getOrganizerProfileId(organizerProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ORGANIZER_GET_PROFILE_ID}`,
+      arguments: [tx.object(organizerProfile)],
+    });
+    return tx;
+  }
+
+  async getOrganizerTreasury(organizerProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ORGANIZER_GET_TREASURY}`,
+      arguments: [tx.object(organizerProfile)],
+    });
+    return tx;
+  }
+
+  // User module functions (readonly)
+  async getUserProfileId(userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_PROFILE_ID}`,
+      arguments: [tx.object(userProfile)],
+    });
+    return tx;
+  }
+
+  async getUserTreasury(userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_TREASURY}`,
+      arguments: [tx.object(userProfile)],
+    });
+    return tx;
+  }
+
+  async hasUserAttendedActivity(userProfile: string, activityId: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
+      arguments: [tx.object(userProfile), tx.pure.string(activityId)],
+    });
+    return tx;
+  }
+
+  async getAttendedActivitiesCount(userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
+      arguments: [tx.object(userProfile)],
+    });
+    return tx;
+  }
+
+  // Activity module functions (readonly)
+  async getActivityId(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ID}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async getActivityOrganizerProfileId(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ORGANIZER_PROFILE_ID}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async hasAvailableTickets(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async getRemainingTickets(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async getActivityTicketPrice(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async getTotalSupply(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async getTicketsSold(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async getSaleEndedAt(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_SALE_ENDED_AT}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async isSaleEnded(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
+      arguments: [tx.object(activity)],
+    });
+    return tx;
+  }
+
+  async hasAttendee(activity: string, userProfileId: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_ATTENDEE}`,
+      arguments: [tx.object(activity), tx.pure.string(userProfileId)],
+    });
+    return tx;
+  }
+
+  // Ticket module functions (readonly)
+  async getTicketId(ticket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ID}`,
+      arguments: [tx.object(ticket)],
+    });
+    return tx;
+  }
+
+  async getTicketActivityId(ticket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ACTIVITY_ID}`,
+      arguments: [tx.object(ticket)],
+    });
+    return tx;
+  }
+
+  async isTicketClipped(ticket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_CLIPPED}`,
+      arguments: [tx.object(ticket)],
+    });
+    return tx;
+  }
+
+  async isTicketBound(ticket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_BOUND}`,
+      arguments: [tx.object(ticket)],
+    });
+    return tx;
+  }
+
+  async getProtectedTicketInnerId(protectedTicket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ID}`,
+      arguments: [tx.object(protectedTicket)],
+    });
+    return tx;
+  }
+
+  async getProtectedTicketInnerActivityId(protectedTicket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ACTIVITY_ID}`,
+      arguments: [tx.object(protectedTicket)],
+    });
+    return tx;
+  }
+
+  async getProtectedTicketInnerOwnerProfileId(protectedTicket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_OWNER_PROFILE_ID}`,
+      arguments: [tx.object(protectedTicket)],
     });
     return tx;
   }
@@ -335,6 +628,168 @@ export class JastronPassContract {
       console.error('Failed to get events:', error);
       throw error;
     }
+  }
+
+  // Helper methods for readonly functions (these should be called via dryRun or devInspectTransaction)
+  async callReadonlyFunction(tx: Transaction) {
+    try {
+      return await this.client.devInspectTransactionBlock({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        transactionBlock: tx as any, // Type assertion for compatibility between Transaction and TransactionBlock
+        sender: '0x0000000000000000000000000000000000000000000000000000000000000000', // dummy address for readonly calls
+      });
+    } catch (error) {
+      console.error('Failed to call readonly function:', error);
+      throw error;
+    }
+  }
+
+  // Platform readonly function calls
+  async getPlatformTreasuryValue(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_TREASURY}`,
+      arguments: [tx.object(platform)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async isUserRegisteredValue(platform: string, userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_USER_REGISTERED}`,
+      arguments: [tx.object(platform), tx.pure.string(userProfile)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async isOrganizerRegisteredValue(platform: string, organizerProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_ORGANIZER_REGISTERED}`,
+      arguments: [tx.object(platform), tx.pure.string(organizerProfile)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getRegisteredUsersCountValue(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_USERS_COUNT}`,
+      arguments: [tx.object(platform)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getRegisteredOrganizersCountValue(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_ORGANIZERS_COUNT}`,
+      arguments: [tx.object(platform)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getNumActivitiesValue(platform: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_NUM_ACTIVITIES}`,
+      arguments: [tx.object(platform)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  // Activity readonly function calls
+  async hasAvailableTicketsValue(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
+      arguments: [tx.object(activity)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getRemainingTicketsValue(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
+      arguments: [tx.object(activity)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getActivityTicketPriceValue(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
+      arguments: [tx.object(activity)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getTotalSupplyValue(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
+      arguments: [tx.object(activity)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getTicketsSoldValue(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
+      arguments: [tx.object(activity)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async isSaleEndedValue(activity: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
+      arguments: [tx.object(activity)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  // User readonly function calls
+  async hasUserAttendedActivityValue(userProfile: string, activityId: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
+      arguments: [tx.object(userProfile), tx.pure.string(activityId)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getAttendedActivitiesCountValue(userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
+      arguments: [tx.object(userProfile)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  // Ticket readonly function calls
+  async isTicketClippedValue(ticket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_CLIPPED}`,
+      arguments: [tx.object(ticket)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async isTicketBoundValue(ticket: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_BOUND}`,
+      arguments: [tx.object(ticket)],
+    });
+    return this.callReadonlyFunction(tx);
   }
 }
 

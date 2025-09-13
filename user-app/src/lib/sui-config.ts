@@ -25,9 +25,9 @@ export type SuiNetwork = keyof typeof SUI_NETWORKS;
 export const JASTRON_PASS_PACKAGE = {
   // Package ID from testnet deployment
   testnet: {
-    PACKAGE_ID: '0x96d2d7b6b3e778975e4a4a968dc96a70e26c3cad21e3d8e07dcc87454f07ae06',
-    PLATFORM_ID: '0x5647fe597dcaba23078c3e728baa5b4b8d9993157d450f454d2c900d98ed2848',
-    PUBLISHER_ID: '0x0ed07581264c22f020102be95224866e286035e59641c22196a6d6b6eba3dce6',
+    PACKAGE_ID: '0x041dc080a1e6f6d0b63180922460e73b79595b79b878b1f5a9559841c7fff17b',
+    PLATFORM_ID: '0xb2c1c6e58909f5dba4e26f3051a41241d865a064537d7b091a310b7480be70d4',
+    PUBLISHER_ID: '0x23b17030ba07dff0fcfba80f09dc0545dd5fce2a4954f9fdab21a8ff82364898',
   },
   mainnet: {
     PACKAGE_ID: '',
@@ -53,15 +53,23 @@ export const JASTRON_PASS_PACKAGE = {
   },
   
   STRUCTS: {
+    // Core structs
+    PLATFORM: 'Platform',
     ORGANIZER_CAP: 'OrganizerCap',
     ORGANIZER_PROFILE: 'OrganizerProfile',
     USER_CAP: 'UserCap',
     USER_PROFILE: 'UserProfile',
-    TICKET: 'Ticket',
     ACTIVITY: 'Activity',
-    TICKET_TRANSFER_POLICY: 'TicketTransferPolicy',
+    TICKET: 'Ticket',
     PROTECTED_TICKET: 'ProtectedTicket',
-    PLATFORM: 'Platform'
+    TICKET_LISTING: 'TicketListing',
+    
+    // Transfer policy structs
+    TRANSFER_POLICY: 'TransferPolicy',
+    TRANSFER_POLICY_CAP: 'TransferPolicyCap',
+    ROYALTY_FEE_RULE_CONFIG: 'RoyaltyFeeRuleConfig',
+    RESELL_PRICE_LIMIT_RULE_CONFIG: 'ResellPriceLimitRuleConfig',
+    PLATFORM_FEE_RULE_CONFIG: 'PlatformFeeRuleConfig',
   },
 
   // Public function names from Move contracts
@@ -71,6 +79,7 @@ export const JASTRON_PASS_PACKAGE = {
     REGISTER_USER_PROFILE: 'register_user_profile',
     CREATE_ACTIVITY: 'create_activity',
     BUY_TICKET_FROM_ORGANIZER: 'buy_ticket_from_organizer',
+    ATTEND_ACTIVITY: 'attend_activity',
     CREATE_KIOSK: 'create_kiosk',
     LIST_TICKET_FOR_RESELL: 'list_ticket_for_resell',
     DELIST_TICKET: 'delist_ticket',
@@ -80,6 +89,14 @@ export const JASTRON_PASS_PACKAGE = {
     
     // Platform module (public functions only)
     PLATFORM_GET_TREASURY: 'get_treasury',
+    PLATFORM_IS_USER_REGISTERED: 'is_user_registered',
+    PLATFORM_IS_ORGANIZER_REGISTERED: 'is_organizer_registered',
+    PLATFORM_GET_USER_REGISTRATION_TIMESTAMP: 'get_user_registration_timestamp',
+    PLATFORM_GET_ORGANIZER_REGISTRATION_TIMESTAMP: 'get_organizer_registration_timestamp',
+    PLATFORM_GET_REGISTERED_USERS_COUNT: 'get_registered_users_count',
+    PLATFORM_GET_REGISTERED_ORGANIZERS_COUNT: 'get_registered_organizers_count',
+    PLATFORM_GET_NUM_ACTIVITIES: 'get_num_activities',
+    PLATFORM_LIST_ACTIVITIES: 'list_activities',
     
     // Organizer module (public functions only)
     ORGANIZER_GET_PROFILE_ID: 'get_profile_id',
@@ -88,6 +105,9 @@ export const JASTRON_PASS_PACKAGE = {
     // User module (public functions only)
     USER_GET_PROFILE_ID: 'get_profile_id',
     USER_GET_TREASURY: 'get_treasury',
+    USER_HAS_ATTENDED_ACTIVITY: 'has_attended_activity',
+    USER_GET_ATTENDED_AT: 'get_attended_at',
+    USER_GET_ATTENDED_ACTIVITIES_COUNT: 'get_attended_activities_count',
     
     // Activity module (public functions only)
     ACTIVITY_GET_ID: 'get_id',
@@ -98,6 +118,8 @@ export const JASTRON_PASS_PACKAGE = {
     ACTIVITY_GET_TOTAL_SUPPLY: 'get_total_supply',
     ACTIVITY_GET_TICKETS_SOLD: 'get_tickets_sold',
     ACTIVITY_GET_SALE_ENDED_AT: 'get_sale_ended_at',
+    ACTIVITY_IS_SALE_ENDED: 'is_sale_ended',
+    ACTIVITY_HAS_ATTENDEE: 'has_attendee',
     
     // Ticket module (public functions only)
     TICKET_GET_ID: 'get_id',
@@ -106,6 +128,7 @@ export const JASTRON_PASS_PACKAGE = {
     TICKET_IS_BOUND: 'is_bound',
     TICKET_GET_INNER_ID: 'get_inner_id',
     TICKET_GET_INNER_ACTIVITY_ID: 'get_inner_activity_id',
+    TICKET_GET_INNER_OWNER_PROFILE_ID: 'get_inner_owner_profile_id',
     
     // Ticket Transfer Policy module (public functions only)
     NEW_POLICY: 'new_policy',
@@ -115,6 +138,78 @@ export const JASTRON_PASS_PACKAGE = {
     CALCULATE_RESELL_PRICE_LIMIT: 'calculate_resell_price_limit',
     ADD_PLATFORM_FEE_RULE: 'add_platform_fee_rule',
     CALCULATE_PLATFORM_FEE: 'calculate_platform_fee',
+  },
+
+  // Events from Move contracts
+  EVENTS: {
+    // App module events
+    ORGANIZER_TICKET_PURCHASED: 'OrganizerTicketPurchased',
+    KIOSK_TICKET_LISTED: 'KioskTicketListed',
+    KIOSK_TICKET_PURCHASED: 'KioskTicketPurchased',
+    KIOSK_TICKET_DELISTED: 'KioskTicketDelisted',
+    
+    // Platform module events
+    USER_REGISTERED: 'UserRegistered',
+    ORGANIZER_REGISTERED: 'OrganizerRegistered',
+    
+    // Organizer module events
+    ORGANIZER_PROFILE_REGISTERED: 'OrganizerProfileRegistered',
+    
+    // User module events
+    USER_PROFILE_REGISTERED: 'UserProfileRegistered',
+    ACTIVITY_ATTENDED: 'ActivityAttended',
+    
+    // Activity module events
+    ACTIVITY_CREATED: 'ActivityCreated',
+    
+    // Ticket module events
+    TICKET_MINTED: 'TicketMinted',
+    TICKET_BOUND: 'TicketBound',
+    TICKET_CLIPPED: 'TicketClipped',
+  },
+
+  // Error codes from Move contracts
+  ERROR_CODES: {
+    // App module errors
+    E_NOT_ENOUGH_BALANCE: 101,
+    E_NOT_ENOUGH_TICKETS: 102,
+    E_ORGANIZER_PROFILE_MISMATCH: 103,
+    E_INVALID_PRICE: 104,
+    E_ITEM_NOT_LISTED: 105,
+    E_RESELL_PRICE_LIMIT_EXCEEDED: 106,
+    E_ACTIVITY_SALE_ENDED: 107,
+    E_ACTIVITY_MISMATCH: 108,
+    E_USER_PROFILE_MISMATCH: 109,
+    
+    // Platform module errors
+    E_USER_ALREADY_REGISTERED: 301,
+    E_ORGANIZER_ALREADY_REGISTERED: 302,
+    
+    // Activity module errors
+    E_ACTIVITY_INVALID_PRICE: 1,
+    E_ATTENDEE_ALREADY_ADDED: 2,
+    
+    // Ticket module errors
+    E_TICKET_HAS_BEEN_CLIPPED: 501,
+    E_TICKET_HAS_BEEN_BOUND: 502,
+    E_TICKET_NOT_BOUND: 503,
+    
+    // User module errors
+    E_ACTIVITY_ALREADY_ATTENDED: 601,
+    
+    // Ticket Transfer Policy errors
+    E_OVER_BP_FACTOR: 401,
+    E_ROYALTY_FEE_NOT_ENOUGH: 402,
+    E_TICKET_TRANSFER_RESELL_PRICE_LIMIT_EXCEEDED: 403,
+    E_PLATFORM_FEE_NOT_ENOUGH: 404,
+    E_TICKET_MISMATCH: 405,
+    E_TICKET_TRANSFER_ACTIVITY_MISMATCH: 406,
+    E_TICKET_TRANSFER_ORGANIZER_PROFILE_MISMATCH: 407,
+  },
+
+  // Constants
+  CONSTANTS: {
+    BP_FACTOR: 10000, // 1/BP_FACTOR -> 0.01%, BP_FACTOR/BP_FACTOR = 100%
   },
 } as const;
 

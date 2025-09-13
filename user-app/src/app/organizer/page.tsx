@@ -14,13 +14,14 @@ import {
   formatAddress,
   formatBalance,
 } from '@/lib/sui';
-import { JASTRON_PASS_PACKAGE, getPackageId } from '@/lib/sui-config';
+import { JASTRON_PASS_PACKAGE, getPackageId, getPlatformId } from '@/lib/sui-config';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
 
 interface OrganizerProfile {
   id: string;
+  name: string;
   treasury: string;
   created_at: number;
 }
@@ -59,11 +60,13 @@ export default function OrganizerPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [suiBalance, setSuiBalance] = useState<string>('0');
+  const [organizerName, setOrganizerName] = useState<string>('');
   const { currentNetwork } = useNetwork();
   const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
   
   // Activity creation form
   const [activityForm, setActivityForm] = useState({
+    name: '',
     totalSupply: '',
     ticketPrice: '',
     saleEndedAt: '',
@@ -126,6 +129,7 @@ export default function OrganizerPage() {
         const fields = content.fields as Record<string, unknown>;
         const profile: OrganizerProfile = {
           id: (fields.id as Record<string, unknown>).id as string,
+          name: fields.name as string || 'Unknown Organizer',
           treasury: fields.treasury as string,
           created_at: Date.now(), // Mock timestamp
         };
@@ -266,17 +270,27 @@ export default function OrganizerPage() {
       return;
     }
 
+    if (!organizerName.trim()) {
+      setResult('請輸入主辦方名稱');
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('Creating organizer registration transaction...');
       const contract = jastronPassContract;
-      const tx = await contract.registerOrganizerProfile(address);
+      const platformId = getPlatformId(currentNetwork); // Use platform ID from config
+      
+      const tx = await contract.registerOrganizerProfile(platformId, organizerName.trim(), address);
       
       console.log('Executing transaction...');
       const result = await executeTransaction(tx);
 
       console.log('Organizer registration result:', result);
       setResult(`主辦方註冊成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Clear the organizer name input
+      setOrganizerName('');
       
       // Reload organizer profile
       setTimeout(() => {
@@ -296,7 +310,7 @@ export default function OrganizerPage() {
       return;
     }
 
-    if (!activityForm.totalSupply || !activityForm.ticketPrice || !activityForm.saleEndedAt) {
+    if (!activityForm.name || !activityForm.totalSupply || !activityForm.ticketPrice || !activityForm.saleEndedAt) {
       setResult('請填寫所有必要欄位');
       return;
     }
@@ -304,9 +318,13 @@ export default function OrganizerPage() {
     setLoading(true);
     try {
       const contract = jastronPassContract;
+      const platformId = getPlatformId(currentNetwork); // Get platform ID from config
+      
       const tx = await contract.createActivity(
         organizerCap.id, // organizerCap object ID
         organizerProfile.id, // organizerProfile object ID
+        platformId, // platform object ID
+        activityForm.name, // activity name
         parseInt(activityForm.totalSupply),
         parseInt(activityForm.ticketPrice),
         new Date(activityForm.saleEndedAt).getTime()
@@ -319,6 +337,7 @@ export default function OrganizerPage() {
       
       // Reset form
       setActivityForm({
+        name: '',
         totalSupply: '',
         ticketPrice: '',
         saleEndedAt: '',
@@ -637,7 +656,19 @@ export default function OrganizerPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="total-supply">總票券數量</Label>
+                      <Label htmlFor="activity-name">活動名稱 *</Label>
+                      <Input
+                        id="activity-name"
+                        type="text"
+                        placeholder="輸入活動名稱"
+                        value={activityForm.name}
+                        onChange={(e) => setActivityForm(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="total-supply">總票券數量 *</Label>
                       <Input
                         id="total-supply"
                         type="number"
@@ -645,11 +676,12 @@ export default function OrganizerPage() {
                         value={activityForm.totalSupply}
                         onChange={(e) => setActivityForm(prev => ({ ...prev, totalSupply: e.target.value }))}
                         min="1"
+                        required
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="ticket-price">票價 (MIST)</Label>
+                      <Label htmlFor="ticket-price">票價 (MIST) *</Label>
                       <Input
                         id="ticket-price"
                         type="number"
@@ -657,6 +689,7 @@ export default function OrganizerPage() {
                         value={activityForm.ticketPrice}
                         onChange={(e) => setActivityForm(prev => ({ ...prev, ticketPrice: e.target.value }))}
                         min="1"
+                        required
                       />
                       <p className="text-xs text-muted-foreground">
                         1 SUI = 1,000,000,000 MIST
@@ -664,16 +697,17 @@ export default function OrganizerPage() {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="sale-ended-at">銷售結束時間</Label>
+                      <Label htmlFor="sale-ended-at">銷售結束時間 *</Label>
                       <Input
                         id="sale-ended-at"
                         type="datetime-local"
                         value={activityForm.saleEndedAt}
                         onChange={(e) => setActivityForm(prev => ({ ...prev, saleEndedAt: e.target.value }))}
+                        required
                       />
                     </div>
                     
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="description">活動描述 (選填)</Label>
                       <Input
                         id="description"
@@ -686,7 +720,7 @@ export default function OrganizerPage() {
                   
                   <Button 
                     onClick={handleCreateActivity}
-                    disabled={!connected || loading || !activityForm.totalSupply || !activityForm.ticketPrice || !activityForm.saleEndedAt}
+                    disabled={!connected || loading || !activityForm.name || !activityForm.totalSupply || !activityForm.ticketPrice || !activityForm.saleEndedAt}
                     className="w-full"
                   >
                     {loading ? '創建中...' : '創建活動'}
@@ -697,9 +731,25 @@ export default function OrganizerPage() {
                   <p className="text-sm text-muted-foreground">
                     您還沒有註冊主辦方資料。請先註冊主辦方，然後才能創建活動。
                   </p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="organizer-name">主辦方名稱 *</Label>
+                    <Input
+                      id="organizer-name"
+                      type="text"
+                      placeholder="輸入主辦方名稱"
+                      value={organizerName}
+                      onChange={(e) => setOrganizerName(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      請輸入一個有意義的主辦方名稱，這將用於識別您的組織
+                    </p>
+                  </div>
+                  
                   <Button 
                     onClick={handleRegisterOrganizer} 
-                    disabled={!connected || loading}
+                    disabled={!connected || loading || !organizerName.trim()}
                     className="w-full"
                   >
                     {loading ? '註冊中...' : '註冊主辦方'}
@@ -723,6 +773,16 @@ export default function OrganizerPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
+                      <Label className="font-medium">主辦方名稱</Label>
+                      <div className="text-lg font-semibold">
+                        {organizerProfile.name}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">狀態</Label>
+                      <Badge variant="default">已註冊</Badge>
+                    </div>
+                    <div className="space-y-2">
                       <Label className="font-medium">主辦方ID</Label>
                       <Badge variant="outline" className="text-xs">
                         {formatAddress(organizerProfile.id)}
@@ -740,20 +800,32 @@ export default function OrganizerPage() {
                         {new Date(organizerProfile.created_at).toLocaleString()}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="font-medium">狀態</Label>
-                      <Badge variant="default">已註冊</Badge>
-                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    您還沒有註冊主辦方資料。請點擊下方按鈕註冊。
+                    您還沒有註冊主辦方資料。請填寫主辦方名稱並點擊下方按鈕註冊。
                   </p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="organizer-name-profile">主辦方名稱 *</Label>
+                    <Input
+                      id="organizer-name-profile"
+                      type="text"
+                      placeholder="輸入主辦方名稱"
+                      value={organizerName}
+                      onChange={(e) => setOrganizerName(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      請輸入一個有意義的主辦方名稱，這將用於識別您的組織
+                    </p>
+                  </div>
+                  
                   <Button 
                     onClick={handleRegisterOrganizer} 
-                    disabled={!connected || loading}
+                    disabled={!connected || loading || !organizerName.trim()}
                     className="w-full"
                   >
                     {loading ? '註冊中...' : '註冊主辦方'}

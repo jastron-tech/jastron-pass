@@ -15,7 +15,8 @@ import {
   formatBalance,
   createContract,
   JASTRON_PASS_PACKAGE,
-  getPackageId
+  getPackageId,
+  getPlatformId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
@@ -23,6 +24,7 @@ import { useNetwork } from '@/context/network-context';
 
 interface UserProfile {
   id: string;
+  name: string;
   treasury: string;
   verified_at: number;
 }
@@ -39,7 +41,7 @@ interface Activity {
 interface Ticket {
   id: string;
   activity_id: string;
-  used_at: number;
+  clipped_at: number;
   activity?: Activity;
 }
 
@@ -54,6 +56,7 @@ export default function UserPage() {
   const [result, setResult] = useState<string>('');
   const [searchActivityId, setSearchActivityId] = useState('');
   const [suiBalance, setSuiBalance] = useState<string>('0');
+  const [userName, setUserName] = useState<string>('');
   const { currentNetwork } = useNetwork();
   const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
 
@@ -105,6 +108,7 @@ export default function UserPage() {
         const fields = content.fields as Record<string, unknown>;
         const profile: UserProfile = {
           id: (fields.id as Record<string, unknown>).id as string,
+          name: fields.name as string || 'Unknown User',
           treasury: fields.treasury as string,
           verified_at: parseInt(fields.verified_at as string),
         };
@@ -151,7 +155,7 @@ export default function UserPage() {
           const ticket: Ticket = {
             id: ((ticketFields.id as Record<string, unknown>).id as string),
             activity_id: ticketFields.activity_id as string,
-            used_at: parseInt(ticketFields.used_at as string),
+            clipped_at: parseInt(ticketFields.clipped_at as string),
           };
           tickets.push(ticket);
         }
@@ -254,17 +258,27 @@ export default function UserPage() {
       return;
     }
 
+    if (!userName.trim()) {
+      setResult('請輸入用戶名稱');
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('Creating user registration transaction...');
       const contract = jastronPassContract;
-      const tx = await contract.registerUserProfile(address);
+      const platformId = getPlatformId(currentNetwork); // Use platform ID from config
+      
+      const tx = await contract.registerUserProfile(platformId, userName.trim(), address);
       
       console.log('Executing transaction...');
       const result = await executeTransaction(tx);
 
       console.log('User registration result:', result);
       setResult(`用戶註冊成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Clear the user name input
+      setUserName('');
       
       // Reload user profile
       setTimeout(() => {
@@ -410,30 +424,58 @@ export default function UserPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {userProfile ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label className="font-medium">用戶ID:</Label>
-                    <Badge variant="outline">{formatAddress(userProfile.id)}</Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="font-medium">錢包地址:</Label>
-                    <Badge variant="outline">{formatAddress(userProfile.treasury)}</Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="font-medium">驗證狀態:</Label>
-                    <Badge variant={userProfile.verified_at > 0 ? "default" : "secondary"}>
-                      {userProfile.verified_at > 0 ? "已驗證" : "未驗證"}
-                    </Badge>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="font-medium">用戶名稱</Label>
+                      <div className="text-lg font-semibold">
+                        {userProfile.name}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">驗證狀態</Label>
+                      <Badge variant={userProfile.verified_at > 0 ? "default" : "secondary"}>
+                        {userProfile.verified_at > 0 ? "已驗證" : "未驗證"}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">用戶ID</Label>
+                      <Badge variant="outline" className="text-xs">
+                        {formatAddress(userProfile.id)}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-medium">錢包地址</Label>
+                      <Badge variant="outline" className="text-xs">
+                        {formatAddress(userProfile.treasury)}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    您還沒有註冊用戶資料。請先連接錢包，然後點擊下方按鈕註冊。
+                    您還沒有註冊用戶資料。請填寫用戶名稱並點擊下方按鈕註冊。
                   </p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="user-name">用戶名稱 *</Label>
+                    <Input
+                      id="user-name"
+                      type="text"
+                      placeholder="輸入用戶名稱"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      請輸入一個有意義的用戶名稱，這將用於識別您的身份
+                    </p>
+                  </div>
+                  
                   <Button 
                     onClick={handleRegisterUser} 
-                    disabled={!connected || loading}
+                    disabled={!connected || loading || !userName.trim()}
                     className="w-full"
                   >
                     {loading ? '註冊中...' : '註冊用戶資料'}
@@ -471,15 +513,15 @@ export default function UserPage() {
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <Label className="font-medium">票券 #{index + 1}</Label>
-                                <Badge variant={ticket.redeemed_at > 0 ? "destructive" : "default"}>
-                                  {ticket.redeemed_at > 0 ? "已使用" : "未使用"}
+                                <Badge variant={ticket.clipped_at > 0 ? "destructive" : "default"}>
+                                  {ticket.clipped_at > 0 ? "已使用" : "未使用"}
                                 </Badge>
                               </div>
                               <div className="text-sm text-muted-foreground">
                                 <p>票券ID: {formatAddress(ticket.id)}</p>
                                 <p>活動ID: {formatAddress(ticket.activity_id)}</p>
-                                {ticket.redeemed_at > 0 && (
-                                  <p>使用時間: {new Date(ticket.redeemed_at).toLocaleString()}</p>
+                                {ticket.clipped_at > 0 && (
+                                  <p>使用時間: {new Date(ticket.clipped_at).toLocaleString()}</p>
                                 )}
                               </div>
                             </div>
@@ -498,9 +540,25 @@ export default function UserPage() {
                   <p className="text-sm text-muted-foreground text-center py-8">
                     請先註冊用戶資料才能查看票券
                   </p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="user-name-tickets">用戶名稱 *</Label>
+                    <Input
+                      id="user-name-tickets"
+                      type="text"
+                      placeholder="輸入用戶名稱"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      請輸入一個有意義的用戶名稱，這將用於識別您的身份
+                    </p>
+                  </div>
+                  
                   <Button 
                     onClick={handleRegisterUser} 
-                    disabled={!connected || loading}
+                    disabled={!connected || loading || !userName.trim()}
                     className="w-full"
                   >
                     {loading ? '註冊中...' : '註冊用戶資料'}
