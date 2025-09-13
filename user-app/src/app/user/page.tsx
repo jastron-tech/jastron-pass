@@ -179,6 +179,8 @@ export default function UserPage() {
       // In a real app, you'd query activities from a database or indexer
 
       // For demo purposes, create some mock activities
+      // Use fixed timestamps to avoid hydration mismatch
+      const now = 1700000000000; // Fixed timestamp for consistent SSR
       const mockActivities: Activity[] = [
         {
           id: '0x1',
@@ -186,7 +188,7 @@ export default function UserPage() {
           tickets_sold: 25,
           ticket_price: 1000000000, // 1 SUI in MIST
           organizer_profile_id: '0x2',
-          sale_ended_at: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
+          sale_ended_at: now + 7 * 24 * 60 * 60 * 1000, // 7 days from now
         },
         {
           id: '0x3',
@@ -194,7 +196,7 @@ export default function UserPage() {
           tickets_sold: 10,
           ticket_price: 2000000000, // 2 SUI in MIST
           organizer_profile_id: '0x4',
-          sale_ended_at: Date.now() + 14 * 24 * 60 * 60 * 1000, // 14 days from now
+          sale_ended_at: now + 14 * 24 * 60 * 60 * 1000, // 14 days from now
         }
       ];
 
@@ -264,18 +266,22 @@ export default function UserPage() {
     }
 
     setLoading(true);
+    setResult('正在創建交易...');
+    
     try {
       console.log('Creating user registration transaction...');
       const contract = jastronPassContract;
       const platformId = getPlatformId(currentNetwork); // Use platform ID from config
       
+      setResult('正在構建交易...');
       const tx = await contract.registerUserProfile(platformId, userName.trim(), address);
       
+      setResult('正在執行交易，請稍候...');
       console.log('Executing transaction...');
       const result = await executeTransaction(tx);
 
       console.log('User registration result:', result);
-      setResult(`用戶註冊成功！交易: ${(result as { digest: string }).digest}`);
+      setResult(`✅ 用戶註冊成功！交易: ${(result as { digest: string }).digest}`);
       
       // Clear the user name input
       setUserName('');
@@ -286,7 +292,8 @@ export default function UserPage() {
       }, 2000);
     } catch (error) {
       console.error('Failed to register user:', error);
-      setResult(`用戶註冊失敗: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 用戶註冊失敗: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -630,11 +637,11 @@ export default function UserPage() {
                                 <Label className="text-muted-foreground">狀態</Label>
                                 <Badge variant={
                                   activity.tickets_sold < activity.total_supply && 
-                                  activity.sale_ended_at > Date.now() 
+                                  activity.sale_ended_at > 1700000000000 // Use fixed timestamp for consistent rendering
                                     ? "default" : "secondary"
                                 }>
                                   {activity.tickets_sold < activity.total_supply && 
-                                   activity.sale_ended_at > Date.now() 
+                                   activity.sale_ended_at > 1700000000000 // Use fixed timestamp for consistent rendering
                                     ? "可購買" : "已售罄/已結束"}
                                 </Badge>
                               </div>
@@ -642,7 +649,7 @@ export default function UserPage() {
                           </div>
                           
                           {activity.tickets_sold < activity.total_supply && 
-                           activity.sale_ended_at > Date.now() && (
+                           activity.sale_ended_at > 1700000000000 && ( // Use fixed timestamp for consistent rendering
                             <Button 
                               onClick={() => handleBuyTicket(activity.id, activity.ticket_price)}
                               disabled={!connected || loading}

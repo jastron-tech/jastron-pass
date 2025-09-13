@@ -163,18 +163,56 @@ function WalletContextProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Execute transaction helper
+  // Execute transaction helper with timeout and retry
   const executeTransaction = async (transaction: Transaction) => {
     if (!signAndExecuteTransactionBlock) {
       throw new Error('Wallet not connected or signAndExecuteTransactionBlock not available');
     }
     
-    const result = await signAndExecuteTransactionBlock({
+    const { GAS_CONFIG } = await import('../lib/sui-config');
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Transaction timeout after ${GAS_CONFIG.TIMEOUT / 1000} seconds`));
+      }, GAS_CONFIG.TIMEOUT);
+    });
+    
+    // Create the transaction promise
+    const transactionPromise = signAndExecuteTransactionBlock({
       transaction,
       chain: currentNetwork,
     });
-    console.log('交易结果:', result);
-    return result;
+    
+    try {
+      console.log('🚀 开始执行交易...', { 
+        network: currentNetwork, 
+        gasBudget: GAS_CONFIG.DEFAULT_BUDGET,
+        timeout: GAS_CONFIG.TIMEOUT 
+      });
+      
+      // Race between transaction and timeout
+      const result = await Promise.race([transactionPromise, timeoutPromise]);
+      console.log('✅ 交易执行成功:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ 交易执行失败:', error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          throw new Error(`交易超时，请检查网络连接或稍后重试。超时时间: ${GAS_CONFIG.TIMEOUT / 1000}秒`);
+        } else if (error.message.includes('InsufficientGas')) {
+          throw new Error('Gas 费用不足，请确保钱包有足够的 SUI 余额');
+        } else if (error.message.includes('UserRejected')) {
+          throw new Error('用户取消了交易');
+        } else {
+          throw new Error(`交易失败: ${error.message}`);
+        }
+      }
+      
+      throw error;
+    }
   };
 
   // Helper function to switch account

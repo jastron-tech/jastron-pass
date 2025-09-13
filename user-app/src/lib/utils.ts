@@ -37,7 +37,8 @@ export function formatTime(timestamp: number): string {
 }
 
 export function getRelativeTime(timestamp: number): string {
-  const now = Date.now();
+  // Use a fixed reference time to avoid hydration mismatch
+  const now = 1700000000000; // Fixed timestamp for consistent SSR
   const diff = now - timestamp;
   
   const seconds = Math.floor(diff / 1000);

@@ -131,7 +131,7 @@ export default function OrganizerPage() {
           id: (fields.id as Record<string, unknown>).id as string,
           name: fields.name as string || 'Unknown Organizer',
           treasury: fields.treasury as string,
-          created_at: Date.now(), // Mock timestamp
+          created_at: 1700000000000, // Fixed timestamp for consistent SSR
         };
         
         setOrganizerProfile(profile);
@@ -177,6 +177,8 @@ export default function OrganizerPage() {
       console.log('Loading activities...');
       
       // For demo purposes, create mock activities
+      // Use fixed timestamps to avoid hydration mismatch
+      const now = 1700000000000; // Fixed timestamp for consistent SSR
       const mockActivities: Activity[] = [
         {
           id: '0x1',
@@ -184,8 +186,8 @@ export default function OrganizerPage() {
           tickets_sold: 25,
           ticket_price: 1000000000, // 1 SUI
           organizer_profile_id: '0x2',
-          sale_ended_at: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-          created_at: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
+          sale_ended_at: now + 7 * 24 * 60 * 60 * 1000, // 7 days
+          created_at: now - 2 * 24 * 60 * 60 * 1000, // 2 days ago
           status: 'active',
         },
         {
@@ -194,8 +196,8 @@ export default function OrganizerPage() {
           tickets_sold: 50,
           ticket_price: 2000000000, // 2 SUI
           organizer_profile_id: '0x2',
-          sale_ended_at: Date.now() + 3 * 24 * 60 * 60 * 1000, // 3 days
-          created_at: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
+          sale_ended_at: now + 3 * 24 * 60 * 60 * 1000, // 3 days
+          created_at: now - 5 * 24 * 60 * 60 * 1000, // 5 days ago
           status: 'sold_out',
         },
         {
@@ -204,8 +206,8 @@ export default function OrganizerPage() {
           tickets_sold: 81,
           ticket_price: 500000000, // 0.5 SUI
           organizer_profile_id: '0x2',
-          sale_ended_at: Date.now() - 1 * 24 * 60 * 60 * 1000, // 1 day ago
-          created_at: Date.now() - 10 * 24 * 60 * 60 * 1000, // 10 days ago
+          sale_ended_at: now - 1 * 24 * 60 * 60 * 1000, // 1 day ago
+          created_at: now - 10 * 24 * 60 * 60 * 1000, // 10 days ago
           status: 'ended',
         },
       ];
@@ -276,18 +278,22 @@ export default function OrganizerPage() {
     }
 
     setLoading(true);
+    setResult('正在創建交易...');
+    
     try {
       console.log('Creating organizer registration transaction...');
       const contract = jastronPassContract;
       const platformId = getPlatformId(currentNetwork); // Use platform ID from config
       
+      setResult('正在構建交易...');
       const tx = await contract.registerOrganizerProfile(platformId, organizerName.trim(), address);
       
+      setResult('正在執行交易，請稍候...');
       console.log('Executing transaction...');
       const result = await executeTransaction(tx);
 
       console.log('Organizer registration result:', result);
-      setResult(`主辦方註冊成功！交易: ${(result as { digest: string }).digest}`);
+      setResult(`✅ 主辦方註冊成功！交易: ${(result as { digest: string }).digest}`);
       
       // Clear the organizer name input
       setOrganizerName('');
@@ -298,7 +304,8 @@ export default function OrganizerPage() {
       }, 2000);
     } catch (error) {
       console.error('Failed to register organizer:', error);
-      setResult(`主辦方註冊失敗: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 主辦方註冊失敗: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -316,10 +323,13 @@ export default function OrganizerPage() {
     }
 
     setLoading(true);
+    setResult('正在創建活動交易...');
+    
     try {
       const contract = jastronPassContract;
       const platformId = getPlatformId(currentNetwork); // Get platform ID from config
       
+      setResult('正在構建活動交易...');
       const tx = await contract.createActivity(
         organizerCap.id, // organizerCap object ID
         organizerProfile.id, // organizerProfile object ID
@@ -330,10 +340,11 @@ export default function OrganizerPage() {
         new Date(activityForm.saleEndedAt).getTime()
       );
       
+      setResult('正在執行活動創建交易，請稍候...');
       const result = await executeTransaction(tx);
 
       console.log('Activity creation result:', result);
-      setResult(`活動創建成功！交易: ${(result as { digest: string }).digest}`);
+      setResult(`✅ 活動創建成功！交易: ${(result as { digest: string }).digest}`);
       
       // Reset form
       setActivityForm({
@@ -351,7 +362,8 @@ export default function OrganizerPage() {
       }, 2000);
     } catch (error) {
       console.error('Failed to create activity:', error);
-      setResult(`活動創建失敗: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 活動創建失敗: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -374,14 +386,14 @@ export default function OrganizerPage() {
   };
 
   const getActivityStatus = (activity: Activity): string => {
-    const now = Date.now();
+    const now = 1700000000000; // Fixed timestamp for consistent SSR
     if (activity.tickets_sold >= activity.total_supply) return '已售罄';
     if (activity.sale_ended_at < now) return '已結束';
     return '進行中';
   };
 
   const getActivityStatusColor = (activity: Activity): string => {
-    const now = Date.now();
+    const now = 1700000000000; // Fixed timestamp for consistent SSR
     if (activity.tickets_sold >= activity.total_supply) return 'destructive';
     if (activity.sale_ended_at < now) return 'secondary';
     return 'default';

@@ -140,21 +140,21 @@ export default function PlatformPage() {
           id: '0x1',
           type: 'platform_fee',
           amount: '1000000000', // 1 SUI
-          timestamp: Date.now() - 3600000, // 1 hour ago
+          timestamp: 1700000000000 - 3600000, // 1 hour ago (fixed timestamp)
           description: '活動票券平台費用',
         },
         {
           id: '0x2',
           type: 'royalty_fee',
           amount: '500000000', // 0.5 SUI
-          timestamp: Date.now() - 7200000, // 2 hours ago
+          timestamp: 1700000000000 - 7200000, // 2 hours ago (fixed timestamp)
           description: '票券轉售版權費用',
         },
         {
           id: '0x3',
           type: 'platform_fee',
           amount: '2000000000', // 2 SUI
-          timestamp: Date.now() - 86400000, // 1 day ago
+          timestamp: 1700000000000 - 86400000, // 1 day ago (fixed timestamp)
           description: '大型活動平台費用',
         },
       ];

@@ -25,9 +25,9 @@ export type SuiNetwork = keyof typeof SUI_NETWORKS;
 export const JASTRON_PASS_PACKAGE = {
   // Package ID from testnet deployment
   testnet: {
-    PACKAGE_ID: '0x041dc080a1e6f6d0b63180922460e73b79595b79b878b1f5a9559841c7fff17b',
-    PLATFORM_ID: '0xb2c1c6e58909f5dba4e26f3051a41241d865a064537d7b091a310b7480be70d4',
-    PUBLISHER_ID: '0x23b17030ba07dff0fcfba80f09dc0545dd5fce2a4954f9fdab21a8ff82364898',
+    PACKAGE_ID: '0x7726d0a797a8d9944fcb4ec37aa74f06f8503c7281af4df22f9b40f445025c2b',
+    PLATFORM_ID: '0x1ada39ce3ffaceddc70bedc0a8367f27d7b4330d48f2bf79be4a498cf387413d',
+    PUBLISHER_ID: '0x91a045892c4772970ccfd58551d58dc5c3741c369a1469baa0ff0c30af26637a',
   },
   mainnet: {
     PACKAGE_ID: '',
@@ -221,11 +221,13 @@ export const JASTRON_PASS_PACKAGE = {
 // Default network
 export const CURRENT_NETWORK: SuiNetwork = process.env.NEXT_PUBLIC_NETWORK as SuiNetwork || 'testnet';
 
-// Gas configuration
+// Gas configuration - optimized for Devnet
 export const GAS_CONFIG = {
-  DEFAULT_BUDGET: 100000000, // 0.1 SUI
-  MAX_BUDGET: 1000000000,    // 1 SUI
+  DEFAULT_BUDGET: 500000000, // 0.5 SUI - higher for Devnet reliability
+  MAX_BUDGET: 2000000000,    // 2 SUI - for complex transactions
   PRICE: 1000,               // MIST per gas unit
+  TIMEOUT: 120000,           // 120 seconds timeout for Devnet
+  RETRY_ATTEMPTS: 3,         // Number of retry attempts
 } as const;
 
 
