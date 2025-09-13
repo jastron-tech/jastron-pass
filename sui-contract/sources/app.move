@@ -23,6 +23,8 @@ const EInvalidPrice: u64 = 4 + EApp;
 const EItemNotListed: u64 = 5 + EApp;
 const EResellPriceLimitExceeded: u64 = 6 + EApp;
 const EActivitySaleEnded: u64 = 7 + EApp;
+const EActivityMismatch: u64 = 8 + EApp;
+const EUserProfileMismatch: u64 = 9 + EApp;
 
 //---data types---
 public struct TicketListing has copy, store, drop {
@@ -82,9 +84,9 @@ public fun register_user_profile(platform: &mut Platform, name: String, ctx: &mu
 }
 
 #[allow(lint(share_owned, self_transfer))]
-public fun create_activity(_cap: &OrganizerCap, organizer_profile: &mut OrganizerProfile, name: String, total_supply: u64, ticket_price: u64, sale_ended_at: u64, ctx: &mut TxContext) {
+public fun create_activity(_cap: &OrganizerCap, organizer_profile: &mut OrganizerProfile, platform: &mut Platform, name: String, total_supply: u64, ticket_price: u64, sale_ended_at: u64, ctx: &mut TxContext) {
     let activity = activity::new(name, total_supply, ticket_price, organizer_profile, sale_ended_at, ctx);
-    organizer_profile.add_activity(activity.get_id());
+    platform.add_activity(activity.get_id());
     transfer::public_share_object(activity);
 }
 
@@ -119,10 +121,8 @@ public fun buy_ticket_from_organizer(
     transfer::public_transfer(payment_for_platform, platform.get_treasury());
     transfer::public_transfer(payment_for_organizer, seller);
     
-    let protected_ticket = ticket::mint(activity, ctx);
-    let ticket_id = protected_ticket.get_inner_id();
+    let ticket_id = ticket::mint(activity, ticket_receiver_profile, ctx);
     
-    protected_ticket.transfer(ticket_receiver);
     activity.increment_tickets_sold();
 
     event::emit(OrganizerTicketPurchased {
@@ -137,6 +137,20 @@ public fun buy_ticket_from_organizer(
     });
 
     payment
+}
+
+public fun attend_activity(
+    protected_ticket: &mut ProtectedTicket,
+    user_profile: &mut UserProfile,
+    activity: &mut Activity,
+    ctx: &mut TxContext,
+) {
+    assert!(protected_ticket.get_inner_activity_id() == activity.get_id(), EActivityMismatch);
+    assert!(user_profile.get_profile_id() == protected_ticket.get_inner_owner_profile_id(), EUserProfileMismatch);
+    
+    protected_ticket.clip(ctx);
+    user_profile.add_attended_activity(activity.get_id(), ctx);
+    activity.add_attendee(user_profile.get_profile_id(), ctx);
 }
 
 public fun create_kiosk(user_profile: &UserProfile, ctx: &mut TxContext) {

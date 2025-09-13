@@ -1,6 +1,5 @@
 module jastron_pass::organizer;
 use sui::event;
-use sui::linked_table::{Self, LinkedTable};
 use std::string::String;
 //---errors---
 //const EOrganizer: u64 = 200;
@@ -24,8 +23,6 @@ public struct OrganizerProfile has key, store {
     treasury: address,
     registered_at: u64,
     verified_at: u64,
-    activities: LinkedTable<u64, ID>,
-    num_activities: u64,
 }
 
 //---functions---
@@ -36,8 +33,6 @@ public(package) fun new(name: String, ctx: &mut TxContext): (OrganizerProfile, O
         id: object::new(ctx),
         name: name,
         treasury: caller,
-        activities: linked_table::new(ctx),
-        num_activities: 0,
         registered_at: cur_time,
         verified_at: 0
     };
@@ -56,11 +51,6 @@ public(package) fun new(name: String, ctx: &mut TxContext): (OrganizerProfile, O
     (profile, cap)
 }
 
-public(package) fun add_activity(self: &mut OrganizerProfile, activityId: ID) {
-    self.activities.push_front(self.num_activities, activityId);
-    self.num_activities = self.num_activities + 1;
-}
-
 //---readonly functions---
 public fun get_profile_id(self: &OrganizerProfile): ID {
     object::uid_to_inner(&self.id)
@@ -68,12 +58,4 @@ public fun get_profile_id(self: &OrganizerProfile): ID {
 
 public fun get_treasury(self: &OrganizerProfile): address {
     self.treasury
-}
-
-public fun get_num_activities(self: &OrganizerProfile): u64 {
-    self.num_activities
-}
-
-public fun list_activities(self: &OrganizerProfile): &LinkedTable<u64, ID> {
-    &self.activities
 }

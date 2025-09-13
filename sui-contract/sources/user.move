@@ -5,7 +5,8 @@ use sui::table::{Self, Table};
 use std::string::String;
 
 //---errors---
-//const EUser: u64 = 600;
+const EUser: u64 = 600;
+const EActivityAlreadyAttended: u64 = 1 + EUser;
 
 //---data types---
 public struct UserCap has key, store {
@@ -19,7 +20,7 @@ public struct UserProfile has key, store {
     treasury: address,
     registered_at: u64,
     verified_at: u64,
-    attended_activities: Table<ID, u64>, // activity_id -> attendance_timestamp
+    activities: Table<ID, u64>, // activity_id -> attended_at
 }
 
 //---events---
@@ -30,9 +31,9 @@ public struct UserProfileRegistered has copy, drop {
 }
 
 public struct ActivityAttended has copy, drop {
-    user_profile_id: ID,
+    profile_id: ID,
     activity_id: ID,
-    attendance_timestamp: u64,
+    attended_at: u64,
 }
 
 //---functions---
@@ -48,7 +49,7 @@ public(package) fun new(
         treasury: user,
         registered_at: cur_time,
         verified_at: 0,
-        attended_activities: table::new(ctx)
+        activities: table::new(ctx)
     };
 
     let cap = UserCap {
@@ -68,17 +69,18 @@ public(package) fun new(
 public(package) fun add_attended_activity(
     self: &mut UserProfile,
     activity_id: ID,
-    attendance_timestamp: u64
+    ctx: &TxContext,
 ) {
-    table::add(&mut self.attended_activities, activity_id, attendance_timestamp);
+    assert!(!self.has_attended_activity(activity_id), EActivityAlreadyAttended);
+    let cur_time = tx_context::epoch(ctx);
+    table::add(&mut self.activities, activity_id, cur_time);
     
     event::emit(ActivityAttended {
-        user_profile_id: object::uid_to_inner(&self.id),
-        activity_id: activity_id,
-        attendance_timestamp: attendance_timestamp,
+        profile_id: object::uid_to_inner(&self.id),
+        activity_id,
+        attended_at: cur_time,
     });
 }
-
 
 //---readonly functions---
 public fun get_profile_id(self: &UserProfile): ID {
@@ -90,18 +92,13 @@ public fun get_treasury(self: &UserProfile): address {
 }
 
 public fun has_attended_activity(self: &UserProfile, activity_id: ID): bool {
-    table::contains(&self.attended_activities, activity_id)
+    table::contains(&self.activities, activity_id)
 }
 
-// More efficient version that doesn't throw on missing key
-public fun has_attended_activity_safe(self: &UserProfile, activity_id: ID): bool {
-    table::contains(&self.attended_activities, activity_id)
-}
-
-public fun get_attendance_timestamp(self: &UserProfile, activity_id: ID): u64 {
-    *table::borrow(&self.attended_activities, activity_id)
+public fun get_attended_at(self: &UserProfile, activity_id: ID): u64 {
+    *table::borrow(&self.activities, activity_id)
 }
 
 public fun get_attended_activities_count(self: &UserProfile): u64 {
-    table::length(&self.attended_activities)
+    table::length(&self.activities)
 }

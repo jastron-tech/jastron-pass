@@ -3,10 +3,12 @@ module jastron_pass::activity;
 use jastron_pass::organizer::{OrganizerProfile};
 use sui::event;
 use std::string::String;
+use sui::table::{Self, Table};
 
 //---errors---
 const EActivity: u64 = 0;
 const EInvalidPrice: u64 = 1 + EActivity;
+const EAttendeeAlreadyAdded: u64 = 2 + EActivity;
 
 //---data types---
 public struct Activity has key, store {
@@ -16,7 +18,8 @@ public struct Activity has key, store {
     tickets_sold: u64,
     ticket_price: u64,
     organizer_profile_id: ID,
-    sale_ended_at: u64
+    sale_ended_at: u64,
+    attendees: Table<ID, u64>, // user_profile_id -> attended_at
 }
 
 //---events---
@@ -50,6 +53,7 @@ public(package) fun new(
         ticket_price,
         organizer_profile_id: organizer_profile.get_profile_id(),
         sale_ended_at,
+        attendees: table::new(ctx),
     };
 
     event::emit(ActivityCreated {
@@ -66,6 +70,12 @@ public(package) fun new(
 
 public(package) fun increment_tickets_sold(self: &mut Activity) {
     self.tickets_sold = self.tickets_sold + 1;
+}
+
+public(package) fun add_attendee(self: &mut Activity, user_profile_id: ID, ctx: &TxContext) {
+    assert!(!self.has_attendee(user_profile_id), EAttendeeAlreadyAdded);
+    let cur_time = tx_context::epoch(ctx);
+    table::add(&mut self.attendees, user_profile_id, cur_time);
 }
 
 //---public functions---
@@ -103,4 +113,8 @@ public fun get_sale_ended_at(self: &Activity): u64 {
 
 public fun is_sale_ended(self: &Activity, ctx: &TxContext): bool {
     self.sale_ended_at < tx_context::epoch(ctx)
+}
+
+public fun has_attendee(self: &Activity, user_profile_id: ID): bool {
+    table::contains(&self.attendees, user_profile_id)
 }

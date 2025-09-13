@@ -1,6 +1,7 @@
 module jastron_pass::ticket;
 
 use jastron_pass::activity::{Activity};
+use jastron_pass::user::{UserProfile};
 use sui::event;
 
 //---errors---
@@ -12,6 +13,7 @@ const ETicketNotBound: u64 = 3 + ETicket;
 //---data types---
 public struct Ticket has key, store {
     id: UID,
+    owner_profile_id: ID,
     activity_id: ID,
     bound_at: u64,
     clipped_at: u64,
@@ -41,7 +43,7 @@ public struct TicketClipped has copy, drop {
     clipped_by: address,
 }
 
-//---functions---
+//---internal functions---
 public(package) fun bind(self: &mut ProtectedTicket, ctx: &TxContext) {
     assert!(!self.ticket.is_bound(), ETicketHasBeenBound);
 
@@ -65,14 +67,13 @@ public(package) fun clip(self: &mut ProtectedTicket, ctx: &TxContext) {
     });
 }
 
-//---internal functions---
-public(package) fun mint(activity_id: &Activity, ctx: &mut TxContext): ProtectedTicket {
+public(package) fun mint(activity_id: &Activity, receiver_profile: &UserProfile, ctx: &mut TxContext): ID {
     let caller = tx_context::sender(ctx);
     let cur_time = tx_context::epoch(ctx);
     
     let ticket = Ticket {
         id: object::new(ctx),
-
+        owner_profile_id: receiver_profile.get_profile_id(),
         activity_id: activity_id.get_id(),
         bound_at: 0,
         clipped_at: 0,
@@ -87,7 +88,9 @@ public(package) fun mint(activity_id: &Activity, ctx: &mut TxContext): Protected
     });
 
     let protected_ticket = wrap(ticket, ctx);
-    protected_ticket
+    transfer(protected_ticket, receiver_profile);
+
+    ticket_id
 }
 
 public(package) fun unwrap(self: ProtectedTicket): Ticket {
@@ -103,9 +106,10 @@ public(package) fun wrap(self: Ticket, ctx: &mut TxContext): ProtectedTicket {
     }
 }
 
-public(package) fun transfer(self: ProtectedTicket, to: address) {
+public(package) fun transfer(mut self: ProtectedTicket, receiver_profile: &UserProfile) {
     assert!(!self.ticket.is_bound(), ETicketHasBeenBound);
-    transfer::transfer(self, to);
+    self.ticket.owner_profile_id = receiver_profile.get_profile_id();
+    transfer::transfer(self, receiver_profile.get_treasury());
 }
 
 //---readonly functions---
@@ -126,10 +130,14 @@ public fun is_bound(self: &Ticket): bool {
 }
 
 public fun get_inner_id(self: &ProtectedTicket): ID {
-    self.ticket.get_id()
+    object::uid_to_inner(&self.id)
 }
 
 public fun get_inner_activity_id(self: &ProtectedTicket): ID {
-    self.ticket.get_activity_id()
+    self.ticket.activity_id
+}
+
+public fun get_inner_owner_profile_id(self: &ProtectedTicket): ID {
+    self.ticket.owner_profile_id
 }
 
