@@ -66,7 +66,7 @@ export interface Activity {
 export interface Ticket {
   id: string;
   activity_id: string;
-  used_at: number;
+  clipped_at: number;
 }
 
 export interface ProtectedTicket {

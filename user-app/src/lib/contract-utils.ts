@@ -1,55 +1,44 @@
-import { Transaction } from '@mysten/sui/transactions';
-import { JASTRON_PASS_PACKAGE, GAS_CONFIG, getPackageId, getPlatformId, getPublisherId, SuiNetwork } from './sui-config';
-import { getSuiClient } from './sui-client';
+import { SuiNetwork } from './sui-config';
+import { 
+  AppModule, 
+  PlatformModule, 
+  OrganizerModule, 
+  UserModule, 
+  ActivityModule, 
+  TicketModule, 
+  TransferPolicyModule 
+} from './contract-api';
 
-// Contract interaction utilities
+// Main contract class that combines all modules
 export class JastronPassContract {
-  private packageId: string;
-  private platformId: string;
-  private publisherId: string;
-  private client: ReturnType<typeof getSuiClient>;
+  public app: AppModule;
+  public platform: PlatformModule;
+  public organizer: OrganizerModule;
+  public user: UserModule;
+  public activity: ActivityModule;
+  public ticket: TicketModule;
+  public transferPolicy: TransferPolicyModule;
 
   constructor(network: SuiNetwork) {
-    this.packageId = getPackageId(network);
-    this.platformId = getPlatformId(network);
-    this.publisherId = getPublisherId(network);
-    this.client = getSuiClient(network);
+    this.app = new AppModule(network);
+    this.platform = new PlatformModule(network);
+    this.organizer = new OrganizerModule(network);
+    this.user = new UserModule(network);
+    this.activity = new ActivityModule(network);
+    this.ticket = new TicketModule(network);
+    this.transferPolicy = new TransferPolicyModule(network);
   }
 
-  // Create transaction
-  private createTransaction(): Transaction {
-    const tx = new Transaction();
-    tx.setGasBudget(GAS_CONFIG.DEFAULT_BUDGET);
-    return tx;
-  }
+  // Convenience methods for backward compatibility
+  // These delegate to the appropriate modules
 
-  // App module functions
+  // App module convenience methods
   async registerOrganizerProfile(platform: string, name: string, receiver: string) {
-    const tx = this.createTransaction();
-    const organizerCap = tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
-      arguments: [
-        tx.object(platform),
-        tx.pure.string(name),
-      ],
-    });
-    tx.transferObjects([organizerCap], receiver);
-    return tx;
+    return this.app.registerOrganizerProfile(platform, name, receiver);
   }
 
   async registerUserProfile(platform: string, name: string, receiver: string) {
-    const tx = this.createTransaction();
-    const userCap = tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_USER_PROFILE}`,
-      arguments: [
-        tx.object(platform),
-        tx.pure.string(name),
-      ],
-    });
-    
-    // Transfer the returned UserCap to the receiver
-    tx.transferObjects([userCap], receiver);
-    return tx;
+    return this.app.registerUserProfile(platform, name, receiver);
   }
 
   async createActivity(
@@ -61,20 +50,7 @@ export class JastronPassContract {
     ticketPrice: number,
     saleEndedAt: number
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CREATE_ACTIVITY}`,
-      arguments: [
-        tx.object(organizerCap),
-        tx.object(organizerProfile),
-        tx.object(platform),
-        tx.pure.string(name),
-        tx.pure.u64(totalSupply),
-        tx.pure.u64(ticketPrice),
-        tx.pure.u64(saleEndedAt),
-      ],
-    });
-    return tx;
+    return this.app.createActivity(organizerCap, organizerProfile, platform, name, totalSupply, ticketPrice, saleEndedAt);
   }
 
   async buyTicketFromOrganizer(
@@ -85,19 +61,7 @@ export class JastronPassContract {
     organizerProfile: string,
     ticketReceiverProfile: string
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
-      arguments: [
-        tx.object(activity),
-        tx.object(payment),
-        tx.object(platform),
-        tx.object(transferPolicy),
-        tx.object(organizerProfile),
-        tx.object(ticketReceiverProfile),
-      ],
-    });
-    return tx;
+    return this.app.buyTicketFromOrganizer(activity, payment, platform, transferPolicy, organizerProfile, ticketReceiverProfile);
   }
 
   async attendActivity(
@@ -105,25 +69,11 @@ export class JastronPassContract {
     userProfile: string,
     activity: string
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ATTEND_ACTIVITY}`,
-      arguments: [
-        tx.object(protectedTicket),
-        tx.object(userProfile),
-        tx.object(activity),
-      ],
-    });
-    return tx;
+    return this.app.attendActivity(protectedTicket, userProfile, activity);
   }
 
   async createKiosk(userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CREATE_KIOSK}`,
-      arguments: [tx.object(userProfile)],
-    });
-    return tx;
+    return this.app.createKiosk(userProfile);
   }
 
   async listTicketForResell(
@@ -134,19 +84,7 @@ export class JastronPassContract {
     protectedTicket: string,
     price: number
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.LIST_TICKET_FOR_RESELL}`,
-      arguments: [
-        tx.object(kiosk),
-        tx.object(kioskCap),
-        tx.object(transferPolicy),
-        tx.object(activity),
-        tx.object(protectedTicket),
-        tx.pure.u64(price),
-      ],
-    });
-    return tx;
+    return this.app.listTicketForResell(kiosk, kioskCap, transferPolicy, activity, protectedTicket, price);
   }
 
   async delistTicket(
@@ -154,16 +92,7 @@ export class JastronPassContract {
     kioskCap: string,
     ticketId: string
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.DELIST_TICKET}`,
-      arguments: [
-        tx.object(kiosk),
-        tx.object(kioskCap),
-        tx.pure.string(ticketId),
-      ],
-    });
-    return tx;
+    return this.app.delistTicket(kiosk, kioskCap, ticketId);
   }
 
   async purchaseTicket(
@@ -175,314 +104,161 @@ export class JastronPassContract {
     platform: string,
     transferPolicy: string
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PURCHASE_TICKET}`,
-      arguments: [
-        tx.object(kiosk),
-        tx.object(payment),
-        tx.pure.string(ticketId),
-        tx.object(activity),
-        tx.object(organizerProfile),
-        tx.object(platform),
-        tx.object(transferPolicy),
-      ],
-    });
-    return tx;
+    return this.app.purchaseTicket(kiosk, payment, ticketId, activity, organizerProfile, platform, transferPolicy);
   }
 
   async getTicketPrice(kiosk: string, ticketId: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.GET_TICKET_PRICE}`,
-      arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
-    });
-    return tx;
+    return this.app.getTicketPrice(kiosk, ticketId);
   }
 
   async isTicketListed(kiosk: string, ticketId: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.IS_TICKET_LISTED}`,
-      arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
-    });
-    return tx;
+    return this.app.isTicketListed(kiosk, ticketId);
   }
 
-  // Platform module functions (readonly)
+  // Platform module convenience methods
   async getPlatformTreasury(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_TREASURY}`,
-      arguments: [tx.object(platform)],
-    });
-    return tx;
+    return this.platform.getPlatformTreasury(platform);
   }
 
   async isUserRegistered(platform: string, userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_USER_REGISTERED}`,
-      arguments: [tx.object(platform), tx.pure.string(userProfile)],
-    });
-    return tx;
+    return this.platform.isUserRegistered(platform, userProfile);
   }
 
   async isOrganizerRegistered(platform: string, organizerProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_ORGANIZER_REGISTERED}`,
-      arguments: [tx.object(platform), tx.pure.string(organizerProfile)],
-    });
-    return tx;
+    return this.platform.isOrganizerRegistered(platform, organizerProfile);
   }
 
   async getRegisteredUsersCount(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_USERS_COUNT}`,
-      arguments: [tx.object(platform)],
-    });
-    return tx;
+    return this.platform.getRegisteredUsersCount(platform);
   }
 
   async getRegisteredOrganizersCount(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_ORGANIZERS_COUNT}`,
-      arguments: [tx.object(platform)],
-    });
-    return tx;
+    return this.platform.getRegisteredOrganizersCount(platform);
   }
 
   async getNumActivities(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_NUM_ACTIVITIES}`,
-      arguments: [tx.object(platform)],
-    });
-    return tx;
+    return this.platform.getNumActivities(platform);
   }
 
-  // Organizer module functions (readonly)
+  async getUserRegisteredAt(platform: string, userProfile: string) {
+    return this.platform.getUserRegisteredAt(platform, userProfile);
+  }
+
+  async getOrganizerRegisteredAt(platform: string, organizerProfile: string) {
+    return this.platform.getOrganizerRegisteredAt(platform, organizerProfile);
+  }
+
+  async listActivities(platform: string) {
+    return this.platform.listActivities(platform);
+  }
+
+  // Organizer module convenience methods
   async getOrganizerProfileId(organizerProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ORGANIZER_GET_PROFILE_ID}`,
-      arguments: [tx.object(organizerProfile)],
-    });
-    return tx;
+    return this.organizer.getOrganizerProfileId(organizerProfile);
   }
 
   async getOrganizerTreasury(organizerProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ORGANIZER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ORGANIZER_GET_TREASURY}`,
-      arguments: [tx.object(organizerProfile)],
-    });
-    return tx;
+    return this.organizer.getOrganizerTreasury(organizerProfile);
   }
 
-  // User module functions (readonly)
+  // User module convenience methods
   async getUserProfileId(userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_PROFILE_ID}`,
-      arguments: [tx.object(userProfile)],
-    });
-    return tx;
+    return this.user.getUserProfileId(userProfile);
   }
 
   async getUserTreasury(userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_TREASURY}`,
-      arguments: [tx.object(userProfile)],
-    });
-    return tx;
+    return this.user.getUserTreasury(userProfile);
   }
 
   async hasUserAttendedActivity(userProfile: string, activityId: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
-      arguments: [tx.object(userProfile), tx.pure.string(activityId)],
-    });
-    return tx;
+    return this.user.hasUserAttendedActivity(userProfile, activityId);
   }
 
   async getAttendedActivitiesCount(userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
-      arguments: [tx.object(userProfile)],
-    });
-    return tx;
+    return this.user.getAttendedActivitiesCount(userProfile);
   }
 
-  // Activity module functions (readonly)
+  async getAttendedAt(userProfile: string, activityId: string) {
+    return this.user.getAttendedAt(userProfile, activityId);
+  }
+
+  // Activity module convenience methods
   async getActivityId(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ID}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getActivityId(activity);
+  }
+
+  async getActivityName(activity: string) {
+    return this.activity.getActivityName(activity);
   }
 
   async getActivityOrganizerProfileId(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ORGANIZER_PROFILE_ID}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getActivityOrganizerProfileId(activity);
   }
 
   async hasAvailableTickets(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.hasAvailableTickets(activity);
   }
 
   async getRemainingTickets(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getRemainingTickets(activity);
   }
 
   async getActivityTicketPrice(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getActivityTicketPrice(activity);
   }
 
   async getTotalSupply(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getTotalSupply(activity);
   }
 
   async getTicketsSold(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getTicketsSold(activity);
   }
 
   async getSaleEndedAt(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_SALE_ENDED_AT}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.getSaleEndedAt(activity);
   }
 
   async isSaleEnded(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
-      arguments: [tx.object(activity)],
-    });
-    return tx;
+    return this.activity.isSaleEnded(activity);
   }
 
   async hasAttendee(activity: string, userProfileId: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_ATTENDEE}`,
-      arguments: [tx.object(activity), tx.pure.string(userProfileId)],
-    });
-    return tx;
+    return this.activity.hasAttendee(activity, userProfileId);
   }
 
-  // Ticket module functions (readonly)
+  // Ticket module convenience methods
   async getTicketId(ticket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ID}`,
-      arguments: [tx.object(ticket)],
-    });
-    return tx;
+    return this.ticket.getTicketId(ticket);
   }
 
   async getTicketActivityId(ticket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ACTIVITY_ID}`,
-      arguments: [tx.object(ticket)],
-    });
-    return tx;
+    return this.ticket.getTicketActivityId(ticket);
   }
 
   async isTicketClipped(ticket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_CLIPPED}`,
-      arguments: [tx.object(ticket)],
-    });
-    return tx;
+    return this.ticket.isTicketClipped(ticket);
   }
 
   async isTicketBound(ticket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_BOUND}`,
-      arguments: [tx.object(ticket)],
-    });
-    return tx;
+    return this.ticket.isTicketBound(ticket);
   }
 
   async getProtectedTicketInnerId(protectedTicket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ID}`,
-      arguments: [tx.object(protectedTicket)],
-    });
-    return tx;
+    return this.ticket.getProtectedTicketInnerId(protectedTicket);
   }
 
   async getProtectedTicketInnerActivityId(protectedTicket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ACTIVITY_ID}`,
-      arguments: [tx.object(protectedTicket)],
-    });
-    return tx;
+    return this.ticket.getProtectedTicketInnerActivityId(protectedTicket);
   }
 
   async getProtectedTicketInnerOwnerProfileId(protectedTicket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_OWNER_PROFILE_ID}`,
-      arguments: [tx.object(protectedTicket)],
-    });
-    return tx;
+    return this.ticket.getProtectedTicketInnerOwnerProfileId(protectedTicket);
   }
 
-  // Transfer Policy module functions
+  // Transfer Policy module convenience methods
   async newPolicy(publisher: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.NEW_POLICY}`,
-      arguments: [tx.object(publisher)],
-    });
-    return tx;
+    return this.transferPolicy.newPolicy(publisher);
   }
 
   async addRoyaltyFeeRule(
@@ -491,26 +267,11 @@ export class JastronPassContract {
     feeBp: number,
     minFee: number
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_ROYALTY_FEE_RULE}`,
-      arguments: [
-        tx.object(transferPolicy),
-        tx.object(transferPolicyCap),
-        tx.pure.u64(feeBp),
-        tx.pure.u64(minFee),
-      ],
-    });
-    return tx;
+    return this.transferPolicy.addRoyaltyFeeRule(transferPolicy, transferPolicyCap, feeBp, minFee);
   }
 
   async calculateRoyaltyFee(transferPolicy: string, price: number) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
-      arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
-    });
-    return tx;
+    return this.transferPolicy.calculateRoyaltyFee(transferPolicy, price);
   }
 
   async addResellPriceLimitRule(
@@ -518,25 +279,11 @@ export class JastronPassContract {
     transferPolicyCap: string,
     priceLimitBp: number
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_RESELL_PRICE_LIMIT_RULE}`,
-      arguments: [
-        tx.object(transferPolicy),
-        tx.object(transferPolicyCap),
-        tx.pure.u64(priceLimitBp),
-      ],
-    });
-    return tx;
+    return this.transferPolicy.addResellPriceLimitRule(transferPolicy, transferPolicyCap, priceLimitBp);
   }
 
   async calculateResellPriceLimit(transferPolicy: string, originalPrice: number) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_RESELL_PRICE_LIMIT}`,
-      arguments: [tx.object(transferPolicy), tx.pure.u64(originalPrice)],
-    });
-    return tx;
+    return this.transferPolicy.calculateResellPriceLimit(transferPolicy, originalPrice);
   }
 
   async addPlatformFeeRule(
@@ -545,255 +292,165 @@ export class JastronPassContract {
     feeBp: number,
     minFee: number
   ) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_PLATFORM_FEE_RULE}`,
-      arguments: [
-        tx.object(transferPolicy),
-        tx.object(transferPolicyCap),
-        tx.pure.u64(feeBp),
-        tx.pure.u64(minFee),
-      ],
-    });
-    return tx;
+    return this.transferPolicy.addPlatformFeeRule(transferPolicy, transferPolicyCap, feeBp, minFee);
   }
 
   async calculatePlatformFee(transferPolicy: string, price: number) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_PLATFORM_FEE}`,
-      arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
-    });
-    return tx;
+    return this.transferPolicy.calculatePlatformFee(transferPolicy, price);
   }
 
-  // Get object by ID
+  // Utility methods (delegated to base contract)
   async getObject(objectId: string) {
-    try {
-      return await this.client.getObject({
-        id: objectId,
-        options: {
-          showContent: true,
-          showDisplay: true,
-          showType: true,
-          showOwner: true,
-          showPreviousTransaction: true,
-          showStorageRebate: true,
-        },
-      });
-    } catch (error) {
-      console.error('Failed to get object:', error);
-      throw error;
-    }
+    return this.app.getObject(objectId);
   }
 
-  // Get objects by owner
   async getObjectsByOwner(owner: string) {
-    try {
-      return await this.client.getOwnedObjects({
-        owner,
-        options: {
-          showContent: true,
-          showDisplay: true,
-          showType: true,
-          showOwner: true,
-        },
-      });
-    } catch (error) {
-      console.error('Failed to get objects by owner:', error);
-      throw error;
-    }
+    return this.app.getObjectsByOwner(owner);
   }
 
-  // Get events
   async getEvents(module: string, eventType?: string) {
-    try {
-      const query = {
-        MoveModule: {
-          package: this.packageId,
-          module,
-        },
-      };
-      
-      if (eventType) {
-        (query as Record<string, unknown>).MoveEventType = `${this.packageId}::${module}::${eventType}`;
-      }
-
-      return await this.client.queryEvents({
-        query,
-        limit: 50,
-        order: 'descending',
-      });
-    } catch (error) {
-      console.error('Failed to get events:', error);
-      throw error;
-    }
+    return this.app.getEvents(module, eventType);
   }
 
-  // Helper methods for readonly functions (these should be called via dryRun or devInspectTransaction)
-  async callReadonlyFunction(tx: Transaction) {
-    try {
-      return await this.client.devInspectTransactionBlock({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        transactionBlock: tx as any, // Type assertion for compatibility between Transaction and TransactionBlock
-        sender: '0x0000000000000000000000000000000000000000000000000000000000000000', // dummy address for readonly calls
-      });
-    } catch (error) {
-      console.error('Failed to call readonly function:', error);
-      throw error;
-    }
-  }
-
-  // Platform readonly function calls
+  // Readonly function calls (delegated to appropriate modules)
   async getPlatformTreasuryValue(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_TREASURY}`,
-      arguments: [tx.object(platform)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.platform.getPlatformTreasuryValue(platform);
   }
 
   async isUserRegisteredValue(platform: string, userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_USER_REGISTERED}`,
-      arguments: [tx.object(platform), tx.pure.string(userProfile)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.platform.isUserRegisteredValue(platform, userProfile);
   }
 
   async isOrganizerRegisteredValue(platform: string, organizerProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_IS_ORGANIZER_REGISTERED}`,
-      arguments: [tx.object(platform), tx.pure.string(organizerProfile)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.platform.isOrganizerRegisteredValue(platform, organizerProfile);
   }
 
   async getRegisteredUsersCountValue(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_USERS_COUNT}`,
-      arguments: [tx.object(platform)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.platform.getRegisteredUsersCountValue(platform);
   }
 
   async getRegisteredOrganizersCountValue(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_REGISTERED_ORGANIZERS_COUNT}`,
-      arguments: [tx.object(platform)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.platform.getRegisteredOrganizersCountValue(platform);
   }
 
   async getNumActivitiesValue(platform: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.PLATFORM}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PLATFORM_GET_NUM_ACTIVITIES}`,
-      arguments: [tx.object(platform)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.platform.getNumActivitiesValue(platform);
   }
 
-  // Activity readonly function calls
-  async hasAvailableTicketsValue(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
-      arguments: [tx.object(activity)],
-    });
-    return this.callReadonlyFunction(tx);
+  async getUserRegisteredAtValue(platform: string, userProfile: string) {
+    return this.platform.getUserRegisteredAtValue(platform, userProfile);
   }
 
-  async getRemainingTicketsValue(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
-      arguments: [tx.object(activity)],
-    });
-    return this.callReadonlyFunction(tx);
+  async getOrganizerRegisteredAtValue(platform: string, organizerProfile: string) {
+    return this.platform.getOrganizerRegisteredAtValue(platform, organizerProfile);
   }
 
-  async getActivityTicketPriceValue(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
-      arguments: [tx.object(activity)],
-    });
-    return this.callReadonlyFunction(tx);
+  async listActivitiesValue(platform: string) {
+    return this.platform.listActivitiesValue(platform);
   }
 
-  async getTotalSupplyValue(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
-      arguments: [tx.object(activity)],
-    });
-    return this.callReadonlyFunction(tx);
+  async getOrganizerProfileIdValue(organizerProfile: string) {
+    return this.organizer.getOrganizerProfileIdValue(organizerProfile);
   }
 
-  async getTicketsSoldValue(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
-      arguments: [tx.object(activity)],
-    });
-    return this.callReadonlyFunction(tx);
+  async getOrganizerTreasuryValue(organizerProfile: string) {
+    return this.organizer.getOrganizerTreasuryValue(organizerProfile);
   }
 
-  async isSaleEndedValue(activity: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
-      arguments: [tx.object(activity)],
-    });
-    return this.callReadonlyFunction(tx);
-  }
-
-  // User readonly function calls
   async hasUserAttendedActivityValue(userProfile: string, activityId: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
-      arguments: [tx.object(userProfile), tx.pure.string(activityId)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.user.hasUserAttendedActivityValue(userProfile, activityId);
   }
 
   async getAttendedActivitiesCountValue(userProfile: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
-      arguments: [tx.object(userProfile)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.user.getAttendedActivitiesCountValue(userProfile);
   }
 
-  // Ticket readonly function calls
+  async getAttendedAtValue(userProfile: string, activityId: string) {
+    return this.user.getAttendedAtValue(userProfile, activityId);
+  }
+
+  async getUserProfileIdValue(userProfile: string) {
+    return this.user.getUserProfileIdValue(userProfile);
+  }
+
+  async getUserTreasuryValue(userProfile: string) {
+    return this.user.getUserTreasuryValue(userProfile);
+  }
+
+  async hasAvailableTicketsValue(activity: string) {
+    return this.activity.hasAvailableTicketsValue(activity);
+  }
+
+  async getRemainingTicketsValue(activity: string) {
+    return this.activity.getRemainingTicketsValue(activity);
+  }
+
+  async getActivityTicketPriceValue(activity: string) {
+    return this.activity.getActivityTicketPriceValue(activity);
+  }
+
+  async getTotalSupplyValue(activity: string) {
+    return this.activity.getTotalSupplyValue(activity);
+  }
+
+  async getTicketsSoldValue(activity: string) {
+    return this.activity.getTicketsSoldValue(activity);
+  }
+
+  async isSaleEndedValue(activity: string) {
+    return this.activity.isSaleEndedValue(activity);
+  }
+
+  async getActivityNameValue(activity: string) {
+    return this.activity.getActivityNameValue(activity);
+  }
+
+  async getActivityIdValue(activity: string) {
+    return this.activity.getActivityIdValue(activity);
+  }
+
+  async getActivityOrganizerProfileIdValue(activity: string) {
+    return this.activity.getActivityOrganizerProfileIdValue(activity);
+  }
+
+  async getSaleEndedAtValue(activity: string) {
+    return this.activity.getSaleEndedAtValue(activity);
+  }
+
+  async hasAttendeeValue(activity: string, userProfileId: string) {
+    return this.activity.hasAttendeeValue(activity, userProfileId);
+  }
+
   async isTicketClippedValue(ticket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_CLIPPED}`,
-      arguments: [tx.object(ticket)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.ticket.isTicketClippedValue(ticket);
   }
 
   async isTicketBoundValue(ticket: string) {
-    const tx = this.createTransaction();
-    tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_BOUND}`,
-      arguments: [tx.object(ticket)],
-    });
-    return this.callReadonlyFunction(tx);
+    return this.ticket.isTicketBoundValue(ticket);
+  }
+
+  async getTicketIdValue(ticket: string) {
+    return this.ticket.getTicketIdValue(ticket);
+  }
+
+  async getTicketActivityIdValue(ticket: string) {
+    return this.ticket.getTicketActivityIdValue(ticket);
+  }
+
+  async getProtectedTicketInnerIdValue(protectedTicket: string) {
+    return this.ticket.getProtectedTicketInnerIdValue(protectedTicket);
+  }
+
+  async getProtectedTicketInnerActivityIdValue(protectedTicket: string) {
+    return this.ticket.getProtectedTicketInnerActivityIdValue(protectedTicket);
+  }
+
+  async getProtectedTicketInnerOwnerProfileIdValue(protectedTicket: string) {
+    return this.ticket.getProtectedTicketInnerOwnerProfileIdValue(protectedTicket);
   }
 }
 
 // Create contract instance
-export function createContract(packageId: SuiNetwork) {
-  return new JastronPassContract(packageId);
+export function createContract(network: SuiNetwork) {
+  return new JastronPassContract(network);
 }

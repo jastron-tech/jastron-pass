@@ -35,9 +35,9 @@ export const JASTRON_PASS_PACKAGE = {
     PUBLISHER_ID: '',
   },
   devnet: {
-    PACKAGE_ID: '',
-    PLATFORM_ID: '',
-    PUBLISHER_ID: '',
+    PACKAGE_ID: '0x41778db7e7937491fe7d44623b55427680631cd17867f2ca9d486a70c3b5ca99',
+    PLATFORM_ID: '0x8098f063262e46f4f6d6dc3a44ab470dce1809631f9edb95b3ae17574a27ecf8',
+    PUBLISHER_ID: '0x3943d0be7b74fbf383cea1126f87aa76f62336006474cbc2a801869efa351c47',
   },
   
   NAME: 'jastron_pass',
@@ -55,6 +55,7 @@ export const JASTRON_PASS_PACKAGE = {
   STRUCTS: {
     // Core structs
     PLATFORM: 'Platform',
+    PLATFORM_WITNESS: 'PLATFORM',
     ORGANIZER_CAP: 'OrganizerCap',
     ORGANIZER_PROFILE: 'OrganizerProfile',
     USER_CAP: 'UserCap',
@@ -67,8 +68,11 @@ export const JASTRON_PASS_PACKAGE = {
     // Transfer policy structs
     TRANSFER_POLICY: 'TransferPolicy',
     TRANSFER_POLICY_CAP: 'TransferPolicyCap',
+    ROYALTY_FEE_RULE: 'ROYALTY_FEE_RULE',
     ROYALTY_FEE_RULE_CONFIG: 'RoyaltyFeeRuleConfig',
+    RESELL_PRICE_LIMIT_RULE: 'RESELL_PRICE_LIMIT_RULE',
     RESELL_PRICE_LIMIT_RULE_CONFIG: 'ResellPriceLimitRuleConfig',
+    PLATFORM_FEE_RULE: 'PLATFORM_FEE_RULE',
     PLATFORM_FEE_RULE_CONFIG: 'PlatformFeeRuleConfig',
   },
 
@@ -91,8 +95,8 @@ export const JASTRON_PASS_PACKAGE = {
     PLATFORM_GET_TREASURY: 'get_treasury',
     PLATFORM_IS_USER_REGISTERED: 'is_user_registered',
     PLATFORM_IS_ORGANIZER_REGISTERED: 'is_organizer_registered',
-    PLATFORM_GET_USER_REGISTRATION_TIMESTAMP: 'get_user_registration_timestamp',
-    PLATFORM_GET_ORGANIZER_REGISTRATION_TIMESTAMP: 'get_organizer_registration_timestamp',
+    PLATFORM_GET_USER_REGISTERED_AT: 'get_user_registered_at',
+    PLATFORM_GET_ORGANIZER_REGISTERED_AT: 'get_organizer_registered_at',
     PLATFORM_GET_REGISTERED_USERS_COUNT: 'get_registered_users_count',
     PLATFORM_GET_REGISTERED_ORGANIZERS_COUNT: 'get_registered_organizers_count',
     PLATFORM_GET_NUM_ACTIVITIES: 'get_num_activities',
@@ -111,6 +115,7 @@ export const JASTRON_PASS_PACKAGE = {
     
     // Activity module (public functions only)
     ACTIVITY_GET_ID: 'get_id',
+    ACTIVITY_GET_NAME: 'get_name',
     ACTIVITY_GET_ORGANIZER_PROFILE_ID: 'get_organizer_profile_id',
     ACTIVITY_HAS_AVAILABLE_TICKETS: 'has_available_tickets',
     ACTIVITY_GET_REMAINING_TICKETS: 'get_remaining_tickets',
@@ -170,7 +175,7 @@ export const JASTRON_PASS_PACKAGE = {
 
   // Error codes from Move contracts
   ERROR_CODES: {
-    // App module errors
+    // App module errors (EApp = 100)
     E_NOT_ENOUGH_BALANCE: 101,
     E_NOT_ENOUGH_TICKETS: 102,
     E_ORGANIZER_PROFILE_MISMATCH: 103,
@@ -181,30 +186,30 @@ export const JASTRON_PASS_PACKAGE = {
     E_ACTIVITY_MISMATCH: 108,
     E_USER_PROFILE_MISMATCH: 109,
     
-    // Platform module errors
+    // Platform module errors (EPlatform = 300)
     E_USER_ALREADY_REGISTERED: 301,
     E_ORGANIZER_ALREADY_REGISTERED: 302,
     
-    // Activity module errors
+    // Activity module errors (EActivity = 0)
     E_ACTIVITY_INVALID_PRICE: 1,
     E_ATTENDEE_ALREADY_ADDED: 2,
     
-    // Ticket module errors
+    // Ticket module errors (ETicket = 500)
     E_TICKET_HAS_BEEN_CLIPPED: 501,
     E_TICKET_HAS_BEEN_BOUND: 502,
     E_TICKET_NOT_BOUND: 503,
     
-    // User module errors
+    // User module errors (EUser = 600)
     E_ACTIVITY_ALREADY_ATTENDED: 601,
     
-    // Ticket Transfer Policy errors
+    // Ticket Transfer Policy errors (ETicketTransferRule = 400)
     E_OVER_BP_FACTOR: 401,
     E_ROYALTY_FEE_NOT_ENOUGH: 402,
-    E_TICKET_TRANSFER_RESELL_PRICE_LIMIT_EXCEEDED: 403,
+    E_RESELL_PRICE_LIMIT_EXCEEDED_2: 403,
     E_PLATFORM_FEE_NOT_ENOUGH: 404,
     E_TICKET_MISMATCH: 405,
-    E_TICKET_TRANSFER_ACTIVITY_MISMATCH: 406,
-    E_TICKET_TRANSFER_ORGANIZER_PROFILE_MISMATCH: 407,
+    E_ACTIVITY_MISMATCH_2: 406,
+    E_ORGANIZER_PROFILE_MISMATCH_2: 407,
   },
 
   // Constants

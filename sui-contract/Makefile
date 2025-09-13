@@ -2,7 +2,7 @@
 
 # Variables
 PACKAGE_NAME = jastron-pass
-GAS_BUDGET = 100000000
+GAS_BUDGET = 200000000
 NETWORK_TESTNET = testnet
 NETWORK_MAINNET = mainnet
 NETWORK_DEVNET = devnet
@@ -92,6 +92,9 @@ deploy-testnet: build publish-testnet ## Build and deploy to testnet
 
 .PHONY: deploy-mainnet
 deploy-mainnet: build publish-mainnet ## Build and deploy to mainnet
+
+.PHONY: deploy-devnet
+deploy-devnet: build publish-devnet ## Build and deploy to devnet
 
 # Package info
 .PHONY: info
