@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { SuiWalletButtonStable } from '@/lib/sui';
 
 const navigation = [
@@ -11,6 +10,11 @@ const navigation = [
     name: '用戶中心',
     href: '/user',
     description: '票券購買與管理',
+  },
+  {
+    name: 'Kiosk 市場',
+    href: '/kiosk',
+    description: '票券轉售與購買',
   },
   {
     name: '主辦方中心',
@@ -98,6 +102,8 @@ export function Breadcrumb() {
     switch (path) {
       case '/user':
         return '用戶中心';
+      case '/kiosk':
+        return 'Kiosk 市場';
       case '/organizer':
         return '主辦方中心';
       case '/platform':
@@ -111,6 +117,8 @@ export function Breadcrumb() {
     switch (path) {
       case '/user':
         return '管理您的票券和購買活動';
+      case '/kiosk':
+        return '瀏覽和購買轉售票券';
       case '/organizer':
         return '創建和管理您的活動';
       case '/platform':

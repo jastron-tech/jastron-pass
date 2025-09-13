@@ -111,8 +111,16 @@ export class JastronPassContract {
     return this.app.getTicketPrice(kiosk, ticketId);
   }
 
+  async getTicketPriceValue(kiosk: string, ticketId: string) {
+    return this.app.getTicketPriceValue(kiosk, ticketId);
+  }
+
   async isTicketListed(kiosk: string, ticketId: string) {
     return this.app.isTicketListed(kiosk, ticketId);
+  }
+
+  async isTicketListedValue(kiosk: string, ticketId: string) {
+    return this.app.isTicketListedValue(kiosk, ticketId);
   }
 
   // Platform module convenience methods

@@ -179,6 +179,11 @@ export class AppModule extends BaseContract {
     return tx;
   }
 
+  async getTicketPriceValue(kiosk: string, ticketId: string) {
+    const tx = this.getTicketPrice(kiosk, ticketId);
+    return this.callReadonlyFunction(await tx);
+  }
+
   async isTicketListed(kiosk: string, ticketId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
@@ -186,5 +191,10 @@ export class AppModule extends BaseContract {
       arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
     return tx;
+  }
+
+  async isTicketListedValue(kiosk: string, ticketId: string) {
+    const tx = this.isTicketListed(kiosk, ticketId);
+    return this.callReadonlyFunction(await tx);
   }
 }

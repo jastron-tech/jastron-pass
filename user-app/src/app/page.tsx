@@ -13,6 +13,14 @@ const roles = [
     color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
   },
   {
+    name: 'Kiosk 市場',
+    description: '票券轉售與購買',
+    href: '/kiosk',
+    icon: '🏪',
+    features: ['瀏覽轉售票券', '購買轉售票券', '管理轉售', '查看市場'],
+    color: 'bg-orange-50 border-orange-200 hover:bg-orange-100',
+  },
+  {
     name: '主辦方',
     description: '創建活動、管理票券銷售',
     href: '/organizer',

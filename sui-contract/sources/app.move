@@ -173,8 +173,8 @@ public fun list_ticket_for_resell(
     let kiosk_id = object::uid_to_inner(kiosk::uid(kiosk));
     let ticket = ticket::unwrap(protected_ticket);
 
+    df::add(kiosk.uid_mut_as_owner(kiosk_cap), TicketListing { id: ticket_id }, price);
     kiosk::place_and_list(kiosk, kiosk_cap, ticket, price);
-    df::add(kiosk.uid_mut(), TicketListing { id: ticket_id }, price);
     
     event::emit(KioskTicketListed {
         kiosk_id,
@@ -191,8 +191,9 @@ public fun delist_ticket(
     ctx: &mut TxContext,
 ): ProtectedTicket {
     let kiosk_id = object::uid_to_inner(kiosk::uid(kiosk));
+    
+    df::remove<TicketListing, u64>(kiosk.uid_mut_as_owner(kiosk_cap), TicketListing { id: ticket_id });
     let ticket = kiosk::take(kiosk, kiosk_cap, ticket_id);
-    df::remove<TicketListing, u64>(kiosk.uid_mut(), TicketListing { id: ticket_id });
 
     event::emit(KioskTicketDelisted {
         kiosk_id,

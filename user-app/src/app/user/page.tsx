@@ -63,6 +63,10 @@ export default function UserPage() {
   const [searchActivityId, setSearchActivityId] = useState('');
   const [suiBalance, setSuiBalance] = useState<string>('0');
   const [userName, setUserName] = useState<string>('');
+  const [kioskId, setKioskId] = useState<string>('');
+  const [kioskCapId, setKioskCapId] = useState<string>('');
+  const [resellPrice, setResellPrice] = useState<string>('');
+  const [selectedTicketForResell, setSelectedTicketForResell] = useState<string>('');
   const { currentNetwork } = useNetwork();
   const jastronPassContract = useMemo(() => createContract(currentNetwork), [currentNetwork]);
 
@@ -243,6 +247,75 @@ export default function UserPage() {
     }
   }, [address, suiClient, currentNetwork]);
 
+  const loadKioskInfo = useCallback(async () => {
+    if (!address || !suiClient) return;
+    
+    try {
+      console.log('Loading kiosk info for address:', address);
+      
+      // First, get user profile to find kiosk_id
+      const userObjects = await suiClient.getOwnedObjects({
+        owner: address,
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      // Find UserCap object
+      const userCapObject = userObjects.data.find(obj => 
+        obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.USER, JASTRON_PASS.STRUCTS.USER_CAP, currentNetwork, 'v1'))
+      );
+
+      if (!userCapObject?.data?.content) {
+        console.log('Cannot find user cap for kiosk info');
+        return;
+      }
+
+      // Extract profile_id from UserCap
+      const userCapContent = userCapObject.data.content as Record<string, unknown>;
+      const userCapFields = userCapContent.fields as Record<string, unknown>;
+      const profileId = userCapFields.profile_id as string;
+      
+      // Get UserProfile object to find kiosk_id
+      const userProfileObject = await suiClient.getObject({
+        id: profileId,
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      if (!userProfileObject.data?.content) {
+        console.log('Cannot load user profile for kiosk info');
+        return;
+      }
+
+      // Extract kiosk_id from UserProfile
+      const userProfileContent = userProfileObject.data.content as Record<string, unknown>;
+      const userProfileFields = userProfileContent.fields as Record<string, unknown>;
+      const kioskId = userProfileFields.kiosk_id as string;
+
+      setKioskId(kioskId);
+      console.log('Found kiosk from user profile:', kioskId);
+
+      // Find KioskOwnerCap objects
+      const kioskCapObjects = userObjects.data.filter(obj => 
+        obj.data?.type?.includes('0x2::kiosk::KioskOwnerCap')
+      );
+
+      if (kioskCapObjects.length > 0) {
+        setKioskCapId(kioskCapObjects[0].data?.objectId || '');
+        console.log('Found kiosk cap:', kioskCapObjects[0].data?.objectId);
+      }
+
+      console.log(`Found kiosk from profile and ${kioskCapObjects.length} kiosk caps`);
+    } catch (error) {
+      console.error('Failed to load kiosk info:', error);
+      setResult(`載入 Kiosk 資訊失敗: ${error}`);
+    }
+  }, [address, suiClient, currentNetwork]);
+
   const loadAvailableActivities = useCallback(async () => {
     if (!suiClient) return;
     
@@ -250,7 +323,7 @@ export default function UserPage() {
       console.log('Loading available activities from platform...');
       setLoading(true);
       
-      const contract = jastronPassContract;
+      const contract = createContract(currentNetwork);
       const platformId = getPlatformId(currentNetwork);
       
       // Try to get activities from platform object directly
@@ -350,7 +423,7 @@ export default function UserPage() {
     } finally {
       setLoading(false);
     }
-  }, [suiClient, jastronPassContract, currentNetwork]);
+  }, [suiClient, currentNetwork]);
 
   const loadSuiBalance = useCallback(async () => {
     if (!address || !suiClient) return;
@@ -378,8 +451,9 @@ export default function UserPage() {
       loadUserTickets();
       loadAvailableActivities();
       loadSuiBalance();
+      loadKioskInfo();
     }
-  }, [connected, address, loadUserProfile, loadUserTickets, loadAvailableActivities, loadSuiBalance]);
+  }, [connected, address, loadUserProfile, loadUserTickets, loadAvailableActivities, loadSuiBalance, loadKioskInfo]);
 
   const handleRegisterUser = async () => {
     console.log('Register user - Wallet state:', { 
@@ -653,6 +727,118 @@ export default function UserPage() {
     }
   };
 
+  const handleListTicketForResell = async () => {
+    if (!connected || !address || !executeTransaction) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    if (!selectedTicketForResell || !resellPrice || !kioskId || !kioskCapId) {
+      setResult('請選擇票券、填寫價格並確保有 Kiosk');
+      return;
+    }
+
+    setLoading(true);
+    setResult('正在列出票券轉售...');
+    
+    try {
+      const contract = jastronPassContract;
+      const transferPolicyId = getTicketTransferPolicyId(currentNetwork);
+      
+      // Get the selected ticket
+      const selectedTicket = userTickets.find(ticket => ticket.objectId === selectedTicketForResell);
+      if (!selectedTicket) {
+        throw new Error('找不到選中的票券');
+      }
+
+      // Get activity object for the ticket
+      const activityObject = await suiClient.getObject({
+        id: selectedTicket.activity_id,
+        options: { showContent: true, showType: true }
+      });
+      
+      if (!activityObject.data?.content) {
+        throw new Error('無法獲取活動資訊');
+      }
+
+      const tx = await contract.listTicketForResell(
+        kioskId,
+        kioskCapId,
+        transferPolicyId,
+        selectedTicket.activity_id,
+        selectedTicketForResell,
+        parseInt(resellPrice)
+      );
+      
+      setResult('正在執行列出票券交易...');
+      const result = await executeTransaction(tx);
+
+      console.log('List ticket result:', result);
+      setResult(`✅ 票券列出成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Clear form
+      setSelectedTicketForResell('');
+      setResellPrice('');
+      
+      // Refresh data
+      setTimeout(() => {
+        loadUserTickets();
+        loadKioskInfo();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to list ticket for resell:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 列出票券失敗: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelistTicket = async (ticketId: string) => {
+    if (!connected || !address || !executeTransaction) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    if (!kioskId || !kioskCapId) {
+      setResult('請確保有 Kiosk 和 KioskCap');
+      return;
+    }
+
+    setLoading(true);
+    setResult('正在取消列出票券...');
+    
+    try {
+      const contract = jastronPassContract;
+      
+      const tx = await contract.delistTicket(
+        kioskId,
+        kioskCapId,
+        ticketId
+      );
+      
+      setResult('正在執行取消列出交易...');
+      const result = await executeTransaction(tx);
+
+      console.log('Delist ticket result:', result);
+      setResult(`✅ 票券取消列出成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh data
+      setTimeout(() => {
+        loadUserTickets();
+        loadKioskInfo();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to delist ticket:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 取消列出票券失敗: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <WalletStatus />
@@ -782,6 +968,54 @@ export default function UserPage() {
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-4">
+          {/* Kiosk Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Kiosk 狀態</CardTitle>
+              <CardDescription>
+                管理您的 Kiosk 和轉售功能
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-medium">Kiosk ID</Label>
+                    <div className="text-sm">
+                      {kioskId ? (
+                        <Badge variant="outline" className="text-xs">
+                          {formatAddress(kioskId)}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">未找到 Kiosk</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-medium">KioskCap ID</Label>
+                    <div className="text-sm">
+                      {kioskCapId ? (
+                        <Badge variant="outline" className="text-xs">
+                          {formatAddress(kioskCapId)}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">未找到 KioskCap</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  onClick={loadKioskInfo} 
+                  disabled={loading}
+                  variant="outline"
+                  size="sm"
+                >
+                  {loading ? '載入中...' : '重新整理 Kiosk 資訊'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Ticket Statistics */}
           {userTickets.length > 0 && (
             <div className="grid gap-4 md:grid-cols-3">
@@ -918,6 +1152,46 @@ export default function UserPage() {
                                   )}
                                 </div>
                               </div>
+
+                              {/* Kiosk Actions */}
+                              {ticket.clipped_at === 0 && kioskId && kioskCapId && (
+                                <div className="space-y-2">
+                                  <Label className="font-medium">轉售操作</Label>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      type="number"
+                                      placeholder="轉售價格 (MIST)"
+                                      value={selectedTicketForResell === ticket.objectId ? resellPrice : ''}
+                                      onChange={(e) => {
+                                        setSelectedTicketForResell(ticket.objectId);
+                                        setResellPrice(e.target.value);
+                                      }}
+                                      className="flex-1"
+                                    />
+                                    <Button
+                                      onClick={() => handleListTicketForResell()}
+                                      disabled={loading || !resellPrice || selectedTicketForResell !== ticket.objectId}
+                                      size="sm"
+                                    >
+                                      {loading ? '列出中...' : '列出轉售'}
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleDelistTicket(ticket.id)}
+                                      disabled={loading}
+                                      variant="outline"
+                                      size="sm"
+                                    >
+                                      {loading ? '取消中...' : '取消列出'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {ticket.clipped_at === 0 && (!kioskId || !kioskCapId) && (
+                                <div className="text-sm text-muted-foreground">
+                                  <p>需要 Kiosk 才能進行轉售操作</p>
+                                </div>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
