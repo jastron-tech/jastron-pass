@@ -47,6 +47,8 @@ interface Ticket {
   activity_id: string;
   clipped_at: number;
   activity?: Activity;
+  objectId: string;
+  type: string;
 }
 
 export default function UserPage() {
@@ -135,6 +137,7 @@ export default function UserPage() {
     
     try {
       console.log('Loading user tickets for address:', address);
+      setLoading(true);
       
       // Get all objects
       const objects = await suiClient.getOwnedObjects({
@@ -150,26 +153,93 @@ export default function UserPage() {
         obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.PROTECTED_TICKET, currentNetwork, 'v1'))
       );
 
+      console.log(`Found ${ticketObjects.length} ProtectedTicket objects`);
+
       const tickets: Ticket[] = [];
       for (const obj of ticketObjects) {
         if (obj.data?.content) {
           const content = obj.data.content as Record<string, unknown>;
+          console.log('Ticket object content:', content);
+          
           const fields = content.fields as Record<string, unknown>;
-          const ticketFields = fields.ticket as Record<string, unknown>;
+          console.log('Ticket object fields:', fields);
+          
+          const _ticket = fields.ticket as Record<string, unknown>;
+          const ticketFields = _ticket.fields as Record<string, unknown>;
+          console.log('Ticket fields:', ticketFields);
+          
+          // Check if ticketFields exists and has required properties
+          if (!ticketFields) {
+            console.warn('ticketFields is undefined for object:', obj.data);
+            continue;
+          }
+          
+          if (!ticketFields.id) {
+            console.warn('ticketFields.id is undefined:', ticketFields);
+            continue;
+          }
+          
+          if (!ticketFields.activity_id) {
+            console.warn('ticketFields.activity_id is undefined:', ticketFields);
+            continue;
+          }
+          
+          // Safely extract ticket properties
+          const ticketId = ticketFields.id && typeof ticketFields.id === 'object' && 'id' in ticketFields.id 
+            ? (ticketFields.id as Record<string, unknown>).id as string
+            : ticketFields.id as string;
+            
+          const activityId = ticketFields.activity_id as string;
+          const clippedAt = ticketFields.clipped_at ? parseInt(String(ticketFields.clipped_at)) : 0;
+          
           const ticket: Ticket = {
-            id: ((ticketFields.id as Record<string, unknown>).id as string),
-            activity_id: ticketFields.activity_id as string,
-            clipped_at: parseInt(ticketFields.clipped_at as string),
+            id: ticketId,
+            activity_id: activityId,
+            clipped_at: clippedAt,
+            objectId: obj.data.objectId,
+            type: obj.data.type || '',
           };
+
+          // Try to get activity details for this ticket
+          try {
+            const activityObject = await suiClient.getObject({
+              id: ticket.activity_id,
+              options: {
+                showContent: true,
+                showType: true,
+              }
+            });
+            
+            if (activityObject.data?.content) {
+              const activityContent = activityObject.data.content as Record<string, unknown>;
+              const activityFields = activityContent.fields as Record<string, unknown>;
+              
+              ticket.activity = {
+                id: ticket.activity_id,
+                name: activityFields.name as string || '未命名活動',
+                total_supply: parseInt(String(activityFields.total_supply)) || 0,
+                tickets_sold: parseInt(String(activityFields.tickets_sold)) || 0,
+                ticket_price: parseInt(String(activityFields.ticket_price)) || 0,
+                organizer_profile_id: String(activityFields.organizer_profile_id || ''),
+                sale_ended_at: parseInt(String(activityFields.sale_ended_at)) || 0,
+              };
+            }
+          } catch (error) {
+            console.warn(`Failed to load activity details for ticket ${ticket.id}:`, error);
+          }
+          
           tickets.push(ticket);
         }
       }
 
       setUserTickets(tickets);
-      console.log('Found tickets:', tickets);
+      console.log('Found tickets with details:', tickets);
+      setResult(`成功載入 ${tickets.length} 張票券`);
     } catch (error) {
       console.error('Failed to load user tickets:', error);
       setResult(`載入票券失敗: ${error}`);
+    } finally {
+      setLoading(false);
     }
   }, [address, suiClient, currentNetwork]);
 
@@ -712,11 +782,59 @@ export default function UserPage() {
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-4">
+          {/* Ticket Statistics */}
+          {userTickets.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">總票券數</CardTitle>
+                  <Badge variant="outline">票券</Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{userTickets.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    您擁有的票券總數
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">未使用</CardTitle>
+                  <Badge variant="default">可用</Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {userTickets.filter(ticket => ticket.clipped_at === 0).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    尚未使用的票券
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">已使用</CardTitle>
+                  <Badge variant="destructive">已用</Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {userTickets.filter(ticket => ticket.clipped_at > 0).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    已經使用的票券
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>我的票券</CardTitle>
               <CardDescription>
-                查看您擁有的所有票券
+                查看您擁有的所有票券詳細資訊
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -735,19 +853,70 @@ export default function UserPage() {
                       {userTickets.map((ticket, index) => (
                         <Card key={ticket.id}>
                           <CardContent className="pt-4">
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <Label className="font-medium">票券 #{index + 1}</Label>
                                 <Badge variant={ticket.clipped_at > 0 ? "destructive" : "default"}>
                                   {ticket.clipped_at > 0 ? "已使用" : "未使用"}
                                 </Badge>
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                <p>票券ID: {formatAddress(ticket.id)}</p>
-                                <p>活動ID: {formatAddress(ticket.activity_id)}</p>
-                                {ticket.clipped_at > 0 && (
-                                  <p>使用時間: {new Date(ticket.clipped_at).toLocaleString()}</p>
-                                )}
+                              
+                              {/* Activity Information */}
+                              {ticket.activity ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="font-medium">活動名稱</Label>
+                                    <div className="text-lg font-semibold">{ticket.activity.name}</div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <Label className="text-muted-foreground">票價</Label>
+                                      <p className="font-medium">{ticket.activity.ticket_price.toLocaleString()} MIST</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-muted-foreground">銷售狀態</Label>
+                                      <p className="font-medium">
+                                        {ticket.activity.tickets_sold} / {ticket.activity.total_supply}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-muted-foreground">活動結束時間</Label>
+                                      <p className="font-medium">
+                                        {new Date(ticket.activity.sale_ended_at).toLocaleString()}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-muted-foreground">活動狀態</Label>
+                                      <Badge variant={
+                                        ticket.activity.tickets_sold < ticket.activity.total_supply && 
+                                        ticket.activity.sale_ended_at > Date.now()
+                                          ? "default" : "secondary"
+                                      }>
+                                        {ticket.activity.tickets_sold < ticket.activity.total_supply && 
+                                         ticket.activity.sale_ended_at > Date.now()
+                                          ? "進行中" : "已結束"}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-muted-foreground">
+                                  <p>無法載入活動詳細資訊</p>
+                                </div>
+                              )}
+                              
+                              {/* Ticket Information */}
+                              <div className="space-y-2">
+                                <Label className="font-medium">票券詳細資訊</Label>
+                                <div className="text-sm text-muted-foreground space-y-1">
+                                  <p>票券ID: {formatAddress(ticket.id)}</p>
+                                  <p>活動ID: {formatAddress(ticket.activity_id)}</p>
+                                  <p>對象ID: {formatAddress(ticket.objectId)}</p>
+                                  <p>類型: {ticket.type}</p>
+                                  {ticket.clipped_at > 0 && (
+                                    <p>使用時間: {new Date(ticket.clipped_at).toLocaleString()}</p>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </CardContent>
