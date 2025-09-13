@@ -2,6 +2,7 @@ module jastron_pass::activity;
 
 use jastron_pass::organizer::{OrganizerProfile};
 use sui::event;
+use std::string::String;
 
 //---errors---
 const EActivity: u64 = 0;
@@ -10,6 +11,7 @@ const EInvalidPrice: u64 = 1 + EActivity;
 //---data types---
 public struct Activity has key, store {
     id: UID,
+    name: String,
     total_supply: u64,
     tickets_sold: u64,
     ticket_price: u64,
@@ -29,6 +31,7 @@ public struct ActivityCreated has copy, drop {
 
 //---package functions---
 public(package) fun new(
+    name: String,
     total_supply: u64,
     ticket_price: u64,
     organizer_profile: &OrganizerProfile,
@@ -41,6 +44,7 @@ public(package) fun new(
     let cur_time = tx_context::epoch(ctx);
     let activity = Activity {
         id: object::new(ctx),
+        name,
         total_supply,
         tickets_sold: 0,
         ticket_price,
@@ -95,4 +99,8 @@ public fun get_tickets_sold(activity: &Activity): u64 {
 
 public fun get_sale_ended_at(self: &Activity): u64 {
     self.sale_ended_at
+}
+
+public fun is_sale_ended(self: &Activity, ctx: &TxContext): bool {
+    self.sale_ended_at < tx_context::epoch(ctx)
 }

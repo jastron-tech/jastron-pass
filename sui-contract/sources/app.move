@@ -12,6 +12,7 @@ use sui::transfer_policy::{Self, TransferPolicy};
 use sui::event;
 use sui::kiosk::{Self, Kiosk, KioskOwnerCap};
 use sui::dynamic_field as df;
+use std::string::String;
 
 //---errors---
 const EApp: u64 = 100;
@@ -21,6 +22,7 @@ const EOrganizerProfileMismatch: u64 = 3 + EApp;
 const EInvalidPrice: u64 = 4 + EApp;
 const EItemNotListed: u64 = 5 + EApp;
 const EResellPriceLimitExceeded: u64 = 6 + EApp;
+const EActivitySaleEnded: u64 = 7 + EApp;
 
 //---data types---
 public struct TicketListing has copy, store, drop {
@@ -64,22 +66,23 @@ public struct KioskTicketDelisted has copy, drop {
 
 //---functions---
 #[allow(lint(share_owned, self_transfer))]
-public fun register_organizer_profile(ctx: &mut TxContext): OrganizerCap {
-    let (profile, cap) = organizer::new(ctx);
+public fun register_organizer_profile(name: String, ctx: &mut TxContext): OrganizerCap {
+    let (profile, cap) = organizer::new(name, ctx);
     transfer::public_share_object(profile);
     cap
 }
 
 #[allow(lint(share_owned, self_transfer))]
-public fun register_user_profile(ctx: &mut TxContext): UserCap {
-    let (profile, cap) = user::new(ctx);
+public fun register_user_profile(name: String, ctx: &mut TxContext): UserCap {
+    let (profile, cap) = user::new(name, ctx);
     transfer::public_share_object(profile);
     cap
 }
 
 #[allow(lint(share_owned, self_transfer))]
-public fun create_activity(_cap: &OrganizerCap, organizer_profile: &OrganizerProfile, total_supply: u64, ticket_price: u64, sale_ended_at: u64, ctx: &mut TxContext) {
-    let activity = activity::new(total_supply, ticket_price, organizer_profile, sale_ended_at, ctx);
+public fun create_activity(_cap: &OrganizerCap, organizer_profile: &mut OrganizerProfile, name: String, total_supply: u64, ticket_price: u64, sale_ended_at: u64, ctx: &mut TxContext) {
+    let activity = activity::new(name, total_supply, ticket_price, organizer_profile, sale_ended_at, ctx);
+    organizer_profile.add_activity(activity.get_id());
     transfer::public_share_object(activity);
 }
 
@@ -102,6 +105,7 @@ public fun buy_ticket_from_organizer(
     );
     assert!(coin::value(&payment) >= total_cost, ENotEnoughBalance);
     assert!(activity.has_available_tickets(), ENotEnoughTickets);
+    assert!(!activity.is_sale_ended(ctx), EActivitySaleEnded);
 
     let payment_for_platform = payment.split(platform_fee, ctx);
     let payment_for_organizer = payment.split(ticket_price, ctx);
@@ -178,7 +182,6 @@ public fun delist_ticket(
     let ticket = kiosk::take(kiosk, kiosk_cap, ticket_id);
     df::remove<TicketListing, u64>(kiosk.uid_mut(), TicketListing { id: ticket_id });
 
-    // 发出取消列出门票事件
     event::emit(KioskTicketDelisted {
         kiosk_id,
         ticket_id,

@@ -4,7 +4,8 @@ use jastron_pass::activity::{Activity};
 use sui::event;
 
 //---errors---
-//const ETicket: u64 = 500;
+const ETicket: u64 = 500;
+const ETicketHasBeenRedeemed: u64 = 1 + ETicket;
 
 //---data types---
 public struct Ticket has key, store {
@@ -65,6 +66,7 @@ public(package) fun wrap(self: Ticket, ctx: &mut TxContext): ProtectedTicket {
 }
 
 public(package) fun transfer(self: ProtectedTicket, to: address) {
+    assert!(!self.ticket.is_redeemed(), ETicketHasBeenRedeemed);
     transfer::transfer(self, to);
 }
 

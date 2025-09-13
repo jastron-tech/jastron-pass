@@ -1,6 +1,7 @@
 module jastron_pass::user;
 
 use sui::event;
+use std::string::String;
 
 //---errors---
 //const EUser: u64 = 600;
@@ -13,7 +14,9 @@ public struct UserCap has key, store {
 
 public struct UserProfile has key, store {
     id: UID,
+    name: String,
     treasury: address,
+    registered_at: u64,
     verified_at: u64
 }
 
@@ -26,14 +29,17 @@ public struct UserProfileCreated has copy, drop {
 
 //---functions---
 public(package) fun new(
+    name: String,
     ctx: &mut TxContext,
 ): (UserProfile, UserCap) {
     let cur_time = tx_context::epoch(ctx);
     let user = tx_context::sender(ctx);
     let profile = UserProfile {
         id: object::new(ctx),
-        verified_at: 0,
+        name: name,
         treasury: user,
+        registered_at: cur_time,
+        verified_at: 0
     };
 
     let cap = UserCap {
