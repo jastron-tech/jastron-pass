@@ -12,8 +12,10 @@ import {
   WalletStatus,
   formatAddress,
   formatBalance,
+  getStructType,
   useContractIds,
   useNetwork,
+  JASTRON_PASS,
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/context/wallet-adapter';
@@ -41,7 +43,7 @@ interface TransactionRecord {
 
 export default function PlatformPage() {
   const { connected, address, signAndExecuteTransactionBlock, suiClient } = useWalletAdapter();
-  const { packageId, platformId, publisherId } = useContractIds();
+  const { latestPackageId, platformId, publisherId } = useContractIds();
   const { currentNetwork } = useNetwork();
   
   // State
@@ -73,7 +75,7 @@ export default function PlatformPage() {
 
       // Find Platform object
       const platformObject = objects.data.find(obj => 
-        obj.data?.type?.includes('jastron_pass::platform::Platform')
+        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.PLATFORM, JASTRON_PASS.STRUCTS.PLATFORM, currentNetwork, 'v1'))
       );
 
       if (platformObject?.data?.content) {
@@ -126,7 +128,7 @@ export default function PlatformPage() {
       console.error('Failed to load platform stats:', error);
       setResult(`載入平台統計失敗: ${error}`);
     }
-  }, [suiClient]);
+  }, [suiClient, currentNetwork]);
 
   const loadTransactionRecords = useCallback(async () => {
     if (!suiClient) return;
@@ -275,7 +277,7 @@ export default function PlatformPage() {
           </div>
           <div className="mt-2 space-y-1">
             <div className="text-xs text-muted-foreground">
-              <span className="font-medium">Package ID:</span> {formatAddress(packageId)}
+              <span className="font-medium">Package ID:</span> {formatAddress(latestPackageId)}
             </div>
             <div className="text-xs text-muted-foreground">
               <span className="font-medium">Platform ID:</span> {formatAddress(platformId)}

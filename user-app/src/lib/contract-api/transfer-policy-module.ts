@@ -1,4 +1,4 @@
-import { JASTRON_PASS_PACKAGE } from '../sui-config';
+import { JASTRON_PASS } from '../sui-config';
 import { BaseContract } from './base-contract';
 
 export class TransferPolicyModule extends BaseContract {
@@ -6,7 +6,7 @@ export class TransferPolicyModule extends BaseContract {
   async newPolicy(publisher: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.NEW_POLICY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.NEW_POLICY}`,
       arguments: [tx.object(publisher)],
     });
     return tx;
@@ -20,7 +20,7 @@ export class TransferPolicyModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_ROYALTY_FEE_RULE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.ADD_ROYALTY_FEE_RULE}`,
       arguments: [
         tx.object(transferPolicy),
         tx.object(transferPolicyCap),
@@ -34,7 +34,7 @@ export class TransferPolicyModule extends BaseContract {
   async calculateRoyaltyFee(transferPolicy: string, price: number) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
       arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
     });
     return tx;
@@ -47,7 +47,7 @@ export class TransferPolicyModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_RESELL_PRICE_LIMIT_RULE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.ADD_RESELL_PRICE_LIMIT_RULE}`,
       arguments: [
         tx.object(transferPolicy),
         tx.object(transferPolicyCap),
@@ -60,7 +60,7 @@ export class TransferPolicyModule extends BaseContract {
   async calculateResellPriceLimit(transferPolicy: string, originalPrice: number) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_RESELL_PRICE_LIMIT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.CALCULATE_RESELL_PRICE_LIMIT}`,
       arguments: [tx.object(transferPolicy), tx.pure.u64(originalPrice)],
     });
     return tx;
@@ -74,7 +74,7 @@ export class TransferPolicyModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ADD_PLATFORM_FEE_RULE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.ADD_PLATFORM_FEE_RULE}`,
       arguments: [
         tx.object(transferPolicy),
         tx.object(transferPolicyCap),
@@ -88,7 +88,7 @@ export class TransferPolicyModule extends BaseContract {
   async calculatePlatformFee(transferPolicy: string, price: number) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CALCULATE_PLATFORM_FEE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.CALCULATE_PLATFORM_FEE}`,
       arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
     });
     return tx;

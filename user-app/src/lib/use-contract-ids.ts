@@ -2,14 +2,14 @@
 
 import { useMemo } from 'react';
 import { useNetwork } from '../context/network-context';
-import { getPackageId, getPlatformId, getPublisherId } from './sui-config';
+import { getLatestPackageId, getPlatformId, getPublisherId } from './sui-config';
 
 export function useContractIds() {
   const { currentNetwork } = useNetwork();
 
   const contractIds = useMemo(() => {
     return {
-      packageId: getPackageId(currentNetwork),
+      latestPackageId: getLatestPackageId(currentNetwork),
       platformId: getPlatformId(currentNetwork),
       publisherId: getPublisherId(currentNetwork),
       network: currentNetwork,

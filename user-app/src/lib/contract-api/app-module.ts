@@ -1,4 +1,4 @@
-import { JASTRON_PASS_PACKAGE } from '../sui-config';
+import { JASTRON_PASS } from '../sui-config';
 import { BaseContract } from './base-contract';
 
 export class AppModule extends BaseContract {
@@ -6,7 +6,7 @@ export class AppModule extends BaseContract {
   async registerOrganizerProfile(platform: string, name: string, receiver: string) {
     const tx = this.createTransaction();
     const organizerCap = tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.REGISTER_ORGANIZER_PROFILE}`,
       arguments: [
         tx.object(platform),
         tx.pure.string(name),
@@ -19,7 +19,7 @@ export class AppModule extends BaseContract {
   async registerUserProfile(platform: string, name: string, receiver: string) {
     const tx = this.createTransaction();
     const userCap = tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.REGISTER_USER_PROFILE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.REGISTER_USER_PROFILE}`,
       arguments: [
         tx.object(platform),
         tx.pure.string(name),
@@ -42,7 +42,7 @@ export class AppModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CREATE_ACTIVITY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.CREATE_ACTIVITY}`,
       arguments: [
         tx.object(organizerCap),
         tx.object(organizerProfile),
@@ -66,7 +66,7 @@ export class AppModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
       arguments: [
         tx.object(activity),
         tx.object(payment),
@@ -86,7 +86,7 @@ export class AppModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ATTEND_ACTIVITY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.ATTEND_ACTIVITY}`,
       arguments: [
         tx.object(protectedTicket),
         tx.object(userProfile),
@@ -99,7 +99,7 @@ export class AppModule extends BaseContract {
   async createKiosk(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.CREATE_KIOSK}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.CREATE_KIOSK}`,
       arguments: [tx.object(userProfile)],
     });
     return tx;
@@ -115,7 +115,7 @@ export class AppModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.LIST_TICKET_FOR_RESELL}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.LIST_TICKET_FOR_RESELL}`,
       arguments: [
         tx.object(kiosk),
         tx.object(kioskCap),
@@ -135,7 +135,7 @@ export class AppModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.DELIST_TICKET}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.DELIST_TICKET}`,
       arguments: [
         tx.object(kiosk),
         tx.object(kioskCap),
@@ -156,7 +156,7 @@ export class AppModule extends BaseContract {
   ) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.PURCHASE_TICKET}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.PURCHASE_TICKET}`,
       arguments: [
         tx.object(kiosk),
         tx.object(payment),
@@ -173,7 +173,7 @@ export class AppModule extends BaseContract {
   async getTicketPrice(kiosk: string, ticketId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.GET_TICKET_PRICE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.GET_TICKET_PRICE}`,
       arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
     return tx;
@@ -182,7 +182,7 @@ export class AppModule extends BaseContract {
   async isTicketListed(kiosk: string, ticketId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.APP}::${JASTRON_PASS_PACKAGE.FUNCTIONS.IS_TICKET_LISTED}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.IS_TICKET_LISTED}`,
       arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
     });
     return tx;

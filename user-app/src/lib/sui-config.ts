@@ -22,20 +22,33 @@ export const SUI_NETWORKS = {
 export type SuiNetwork = keyof typeof SUI_NETWORKS;
 
 // Contract configuration
-export const JASTRON_PASS_PACKAGE = {
-  // Package ID from testnet deployment
+export type PackageVersion = 'v1' | 'v2';
+export const JASTRON_PASS = {
+  // Package ID from testnet deployment (upgraded)
   testnet: {
-    PACKAGE_ID: '0x7726d0a797a8d9944fcb4ec37aa74f06f8503c7281af4df22f9b40f445025c2b',
+    latestVersion: 'v2',
+    PACKAGE_ID: {
+      v1: '0x7726d0a797a8d9944fcb4ec37aa74f06f8503c7281af4df22f9b40f445025c2b', // Original package
+      v2: '0xb35a4f4f5b8f90cab5c838fe328df2a6b50ba70026eb4d6e6f21fbf8300a32ff', // Upgraded package
+    },
     PLATFORM_ID: '0x1ada39ce3ffaceddc70bedc0a8367f27d7b4330d48f2bf79be4a498cf387413d',
     PUBLISHER_ID: '0x91a045892c4772970ccfd58551d58dc5c3741c369a1469baa0ff0c30af26637a',
   },
   mainnet: {
-    PACKAGE_ID: '',
+    latestVersion: 'v1',
+    PACKAGE_ID: {
+      v1: '',
+      v2: '',
+    },
     PLATFORM_ID: '',
     PUBLISHER_ID: '',
   },
   devnet: {
-    PACKAGE_ID: '0x41778db7e7937491fe7d44623b55427680631cd17867f2ca9d486a70c3b5ca99',
+    latestVersion: 'v1',
+    PACKAGE_ID: {
+      v1: '0x41778db7e7937491fe7d44623b55427680631cd17867f2ca9d486a70c3b5ca99',
+      v2: '',
+    },
     PLATFORM_ID: '0x8098f063262e46f4f6d6dc3a44ab470dce1809631f9edb95b3ae17574a27ecf8',
     PUBLISHER_ID: '0x3943d0be7b74fbf383cea1126f87aa76f62336006474cbc2a801869efa351c47',
   },
@@ -50,30 +63,6 @@ export const JASTRON_PASS_PACKAGE = {
     TICKET: 'ticket',
     ACTIVITY: 'activity',
     TICKET_TRANSFER_POLICY: 'ticket_transfer_policy',
-  },
-  
-  STRUCTS: {
-    // Core structs
-    PLATFORM: 'Platform',
-    PLATFORM_WITNESS: 'PLATFORM',
-    ORGANIZER_CAP: 'OrganizerCap',
-    ORGANIZER_PROFILE: 'OrganizerProfile',
-    USER_CAP: 'UserCap',
-    USER_PROFILE: 'UserProfile',
-    ACTIVITY: 'Activity',
-    TICKET: 'Ticket',
-    PROTECTED_TICKET: 'ProtectedTicket',
-    TICKET_LISTING: 'TicketListing',
-    
-    // Transfer policy structs
-    TRANSFER_POLICY: 'TransferPolicy',
-    TRANSFER_POLICY_CAP: 'TransferPolicyCap',
-    ROYALTY_FEE_RULE: 'ROYALTY_FEE_RULE',
-    ROYALTY_FEE_RULE_CONFIG: 'RoyaltyFeeRuleConfig',
-    RESELL_PRICE_LIMIT_RULE: 'RESELL_PRICE_LIMIT_RULE',
-    RESELL_PRICE_LIMIT_RULE_CONFIG: 'ResellPriceLimitRuleConfig',
-    PLATFORM_FEE_RULE: 'PLATFORM_FEE_RULE',
-    PLATFORM_FEE_RULE_CONFIG: 'PlatformFeeRuleConfig',
   },
 
   // Public function names from Move contracts
@@ -145,7 +134,30 @@ export const JASTRON_PASS_PACKAGE = {
     CALCULATE_PLATFORM_FEE: 'calculate_platform_fee',
   },
 
-  // Events from Move contracts
+  STRUCTS: {
+    // Core structs
+    PLATFORM: 'Platform',
+    PLATFORM_WITNESS: 'PLATFORM',
+    ORGANIZER_CAP: 'OrganizerCap',
+    ORGANIZER_PROFILE: 'OrganizerProfile',
+    USER_CAP: 'UserCap',
+    USER_PROFILE: 'UserProfile',
+    ACTIVITY: 'Activity',
+    TICKET: 'Ticket',
+    PROTECTED_TICKET: 'ProtectedTicket',
+    TICKET_LISTING: 'TicketListing',
+    
+    // Transfer policy structs
+    TRANSFER_POLICY: 'TransferPolicy',
+    TRANSFER_POLICY_CAP: 'TransferPolicyCap',
+    ROYALTY_FEE_RULE: 'ROYALTY_FEE_RULE',
+    ROYALTY_FEE_RULE_CONFIG: 'RoyaltyFeeRuleConfig',
+    RESELL_PRICE_LIMIT_RULE: 'RESELL_PRICE_LIMIT_RULE',
+    RESELL_PRICE_LIMIT_RULE_CONFIG: 'ResellPriceLimitRuleConfig',
+    PLATFORM_FEE_RULE: 'PLATFORM_FEE_RULE',
+    PLATFORM_FEE_RULE_CONFIG: 'PlatformFeeRuleConfig',
+  },
+
   EVENTS: {
     // App module events
     ORGANIZER_TICKET_PURCHASED: 'OrganizerTicketPurchased',
@@ -230,16 +242,27 @@ export const GAS_CONFIG = {
   RETRY_ATTEMPTS: 3,         // Number of retry attempts
 } as const;
 
-
 // Dynamic contract IDs based on current network
-export function getPackageId(network: SuiNetwork): string {
-  return JASTRON_PASS_PACKAGE[network].PACKAGE_ID;
-}
-
 export function getPlatformId(network: SuiNetwork): string {
-  return JASTRON_PASS_PACKAGE[network].PLATFORM_ID;
+  return JASTRON_PASS[network].PLATFORM_ID;
 }
 
 export function getPublisherId(network: SuiNetwork): string {
-  return JASTRON_PASS_PACKAGE[network].PUBLISHER_ID;
+  return JASTRON_PASS[network].PUBLISHER_ID;
+}
+
+export function getLatestPackageId(network: SuiNetwork): string {
+  return JASTRON_PASS[network].PACKAGE_ID[JASTRON_PASS[network].latestVersion as PackageVersion];
+}
+
+// Helper function to get struct type with specified package version
+export function getStructType(module: string, struct: string, network: SuiNetwork, version: PackageVersion = 'v1'): string {
+  const packageId = JASTRON_PASS[network].PACKAGE_ID[version];
+  return `${packageId}::${module}::${struct}`;
+}
+
+// Helper function to get event type with specified package version
+export function getEventType(module: string, event: string, network: SuiNetwork, version: PackageVersion = 'v1'): string {
+  const packageId = JASTRON_PASS[network].PACKAGE_ID[version];
+  return `${packageId}::${module}::${event}`;
 }

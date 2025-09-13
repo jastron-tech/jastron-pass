@@ -1,4 +1,4 @@
-import { JASTRON_PASS_PACKAGE } from '../sui-config';
+import { JASTRON_PASS } from '../sui-config';
 import { BaseContract } from './base-contract';
 
 export class ActivityModule extends BaseContract {
@@ -6,7 +6,7 @@ export class ActivityModule extends BaseContract {
   async getActivityId(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_ID}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -15,7 +15,7 @@ export class ActivityModule extends BaseContract {
   async getActivityName(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_NAME}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_NAME}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -24,7 +24,7 @@ export class ActivityModule extends BaseContract {
   async getActivityOrganizerProfileId(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ORGANIZER_PROFILE_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_ORGANIZER_PROFILE_ID}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -33,7 +33,7 @@ export class ActivityModule extends BaseContract {
   async hasAvailableTickets(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -42,7 +42,7 @@ export class ActivityModule extends BaseContract {
   async getRemainingTickets(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -51,7 +51,7 @@ export class ActivityModule extends BaseContract {
   async getActivityTicketPrice(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -60,7 +60,7 @@ export class ActivityModule extends BaseContract {
   async getTotalSupply(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -69,7 +69,7 @@ export class ActivityModule extends BaseContract {
   async getTicketsSold(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -78,7 +78,7 @@ export class ActivityModule extends BaseContract {
   async getSaleEndedAt(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_SALE_ENDED_AT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_SALE_ENDED_AT}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -87,7 +87,7 @@ export class ActivityModule extends BaseContract {
   async isSaleEnded(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
       arguments: [tx.object(activity)],
     });
     return tx;
@@ -96,7 +96,7 @@ export class ActivityModule extends BaseContract {
   async hasAttendee(activity: string, userProfileId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_ATTENDEE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_HAS_ATTENDEE}`,
       arguments: [tx.object(activity), tx.pure.string(userProfileId)],
     });
     return tx;
@@ -106,7 +106,7 @@ export class ActivityModule extends BaseContract {
   async hasAvailableTicketsValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_HAS_AVAILABLE_TICKETS}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -115,7 +115,7 @@ export class ActivityModule extends BaseContract {
   async getRemainingTicketsValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_REMAINING_TICKETS}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -124,7 +124,7 @@ export class ActivityModule extends BaseContract {
   async getActivityTicketPriceValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_TICKET_PRICE}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -133,7 +133,7 @@ export class ActivityModule extends BaseContract {
   async getTotalSupplyValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_TOTAL_SUPPLY}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -142,7 +142,7 @@ export class ActivityModule extends BaseContract {
   async getTicketsSoldValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_TICKETS_SOLD}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -151,7 +151,7 @@ export class ActivityModule extends BaseContract {
   async isSaleEndedValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_IS_SALE_ENDED}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -160,7 +160,7 @@ export class ActivityModule extends BaseContract {
   async getActivityNameValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_NAME}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_NAME}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -169,7 +169,7 @@ export class ActivityModule extends BaseContract {
   async getActivityIdValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_ID}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -178,7 +178,7 @@ export class ActivityModule extends BaseContract {
   async getActivityOrganizerProfileIdValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_ORGANIZER_PROFILE_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_ORGANIZER_PROFILE_ID}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -187,7 +187,7 @@ export class ActivityModule extends BaseContract {
   async getSaleEndedAtValue(activity: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_GET_SALE_ENDED_AT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_GET_SALE_ENDED_AT}`,
       arguments: [tx.object(activity)],
     });
     return this.callReadonlyFunction(tx);
@@ -196,7 +196,7 @@ export class ActivityModule extends BaseContract {
   async hasAttendeeValue(activity: string, userProfileId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.ACTIVITY}::${JASTRON_PASS_PACKAGE.FUNCTIONS.ACTIVITY_HAS_ATTENDEE}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.ACTIVITY}::${JASTRON_PASS.FUNCTIONS.ACTIVITY_HAS_ATTENDEE}`,
       arguments: [tx.object(activity), tx.pure.string(userProfileId)],
     });
     return this.callReadonlyFunction(tx);

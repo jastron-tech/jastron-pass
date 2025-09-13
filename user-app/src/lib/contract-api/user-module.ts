@@ -1,4 +1,4 @@
-import { JASTRON_PASS_PACKAGE } from '../sui-config';
+import { JASTRON_PASS } from '../sui-config';
 import { BaseContract } from './base-contract';
 
 export class UserModule extends BaseContract {
@@ -6,7 +6,7 @@ export class UserModule extends BaseContract {
   async getUserProfileId(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_PROFILE_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_PROFILE_ID}`,
       arguments: [tx.object(userProfile)],
     });
     return tx;
@@ -15,7 +15,7 @@ export class UserModule extends BaseContract {
   async getUserTreasury(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_TREASURY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_TREASURY}`,
       arguments: [tx.object(userProfile)],
     });
     return tx;
@@ -24,7 +24,7 @@ export class UserModule extends BaseContract {
   async hasUserAttendedActivity(userProfile: string, activityId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
       arguments: [tx.object(userProfile), tx.pure.string(activityId)],
     });
     return tx;
@@ -33,7 +33,7 @@ export class UserModule extends BaseContract {
   async getAttendedActivitiesCount(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
       arguments: [tx.object(userProfile)],
     });
     return tx;
@@ -42,7 +42,7 @@ export class UserModule extends BaseContract {
   async getAttendedAt(userProfile: string, activityId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_AT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_ATTENDED_AT}`,
       arguments: [tx.object(userProfile), tx.pure.string(activityId)],
     });
     return tx;
@@ -52,7 +52,7 @@ export class UserModule extends BaseContract {
   async hasUserAttendedActivityValue(userProfile: string, activityId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_HAS_ATTENDED_ACTIVITY}`,
       arguments: [tx.object(userProfile), tx.pure.string(activityId)],
     });
     return this.callReadonlyFunction(tx);
@@ -61,7 +61,7 @@ export class UserModule extends BaseContract {
   async getAttendedActivitiesCountValue(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_ATTENDED_ACTIVITIES_COUNT}`,
       arguments: [tx.object(userProfile)],
     });
     return this.callReadonlyFunction(tx);
@@ -70,7 +70,7 @@ export class UserModule extends BaseContract {
   async getAttendedAtValue(userProfile: string, activityId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_ATTENDED_AT}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_ATTENDED_AT}`,
       arguments: [tx.object(userProfile), tx.pure.string(activityId)],
     });
     return this.callReadonlyFunction(tx);
@@ -79,7 +79,7 @@ export class UserModule extends BaseContract {
   async getUserProfileIdValue(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_PROFILE_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_PROFILE_ID}`,
       arguments: [tx.object(userProfile)],
     });
     return this.callReadonlyFunction(tx);
@@ -88,7 +88,7 @@ export class UserModule extends BaseContract {
   async getUserTreasuryValue(userProfile: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.FUNCTIONS.USER_GET_TREASURY}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_TREASURY}`,
       arguments: [tx.object(userProfile)],
     });
     return this.callReadonlyFunction(tx);

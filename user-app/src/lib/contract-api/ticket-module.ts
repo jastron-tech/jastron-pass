@@ -1,4 +1,4 @@
-import { JASTRON_PASS_PACKAGE } from '../sui-config';
+import { JASTRON_PASS } from '../sui-config';
 import { BaseContract } from './base-contract';
 
 export class TicketModule extends BaseContract {
@@ -6,7 +6,7 @@ export class TicketModule extends BaseContract {
   async getTicketId(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_ID}`,
       arguments: [tx.object(ticket)],
     });
     return tx;
@@ -15,7 +15,7 @@ export class TicketModule extends BaseContract {
   async getTicketActivityId(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ACTIVITY_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_ACTIVITY_ID}`,
       arguments: [tx.object(ticket)],
     });
     return tx;
@@ -24,7 +24,7 @@ export class TicketModule extends BaseContract {
   async isTicketClipped(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_CLIPPED}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_IS_CLIPPED}`,
       arguments: [tx.object(ticket)],
     });
     return tx;
@@ -33,7 +33,7 @@ export class TicketModule extends BaseContract {
   async isTicketBound(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_BOUND}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_IS_BOUND}`,
       arguments: [tx.object(ticket)],
     });
     return tx;
@@ -42,7 +42,7 @@ export class TicketModule extends BaseContract {
   async getProtectedTicketInnerId(protectedTicket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_INNER_ID}`,
       arguments: [tx.object(protectedTicket)],
     });
     return tx;
@@ -51,7 +51,7 @@ export class TicketModule extends BaseContract {
   async getProtectedTicketInnerActivityId(protectedTicket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ACTIVITY_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_INNER_ACTIVITY_ID}`,
       arguments: [tx.object(protectedTicket)],
     });
     return tx;
@@ -60,7 +60,7 @@ export class TicketModule extends BaseContract {
   async getProtectedTicketInnerOwnerProfileId(protectedTicket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_OWNER_PROFILE_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_INNER_OWNER_PROFILE_ID}`,
       arguments: [tx.object(protectedTicket)],
     });
     return tx;
@@ -70,7 +70,7 @@ export class TicketModule extends BaseContract {
   async isTicketClippedValue(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_CLIPPED}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_IS_CLIPPED}`,
       arguments: [tx.object(ticket)],
     });
     return this.callReadonlyFunction(tx);
@@ -79,7 +79,7 @@ export class TicketModule extends BaseContract {
   async isTicketBoundValue(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_IS_BOUND}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_IS_BOUND}`,
       arguments: [tx.object(ticket)],
     });
     return this.callReadonlyFunction(tx);
@@ -88,7 +88,7 @@ export class TicketModule extends BaseContract {
   async getTicketIdValue(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_ID}`,
       arguments: [tx.object(ticket)],
     });
     return this.callReadonlyFunction(tx);
@@ -97,7 +97,7 @@ export class TicketModule extends BaseContract {
   async getTicketActivityIdValue(ticket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_ACTIVITY_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_ACTIVITY_ID}`,
       arguments: [tx.object(ticket)],
     });
     return this.callReadonlyFunction(tx);
@@ -106,7 +106,7 @@ export class TicketModule extends BaseContract {
   async getProtectedTicketInnerIdValue(protectedTicket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_INNER_ID}`,
       arguments: [tx.object(protectedTicket)],
     });
     return this.callReadonlyFunction(tx);
@@ -115,7 +115,7 @@ export class TicketModule extends BaseContract {
   async getProtectedTicketInnerActivityIdValue(protectedTicket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_ACTIVITY_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_INNER_ACTIVITY_ID}`,
       arguments: [tx.object(protectedTicket)],
     });
     return this.callReadonlyFunction(tx);
@@ -124,7 +124,7 @@ export class TicketModule extends BaseContract {
   async getProtectedTicketInnerOwnerProfileIdValue(protectedTicket: string) {
     const tx = this.createTransaction();
     tx.moveCall({
-      target: `${this.packageId}::${JASTRON_PASS_PACKAGE.MODULES.TICKET}::${JASTRON_PASS_PACKAGE.FUNCTIONS.TICKET_GET_INNER_OWNER_PROFILE_ID}`,
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET}::${JASTRON_PASS.FUNCTIONS.TICKET_GET_INNER_OWNER_PROFILE_ID}`,
       arguments: [tx.object(protectedTicket)],
     });
     return this.callReadonlyFunction(tx);

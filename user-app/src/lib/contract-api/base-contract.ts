@@ -1,16 +1,16 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { GAS_CONFIG, getPackageId, getPlatformId, getPublisherId, SuiNetwork } from '../sui-config';
+import { GAS_CONFIG, getLatestPackageId, getPlatformId, getPublisherId, SuiNetwork } from '../sui-config';
 import { getSuiClient } from '../sui-client';
 
 // Base contract class with common functionality
 export abstract class BaseContract {
-  protected packageId: string;
+  protected latestPackageId: string;
   protected platformId: string;
   protected publisherId: string;
   protected client: ReturnType<typeof getSuiClient>;
 
   constructor(network: SuiNetwork) {
-    this.packageId = getPackageId(network);
+    this.latestPackageId = getLatestPackageId(network);
     this.platformId = getPlatformId(network);
     this.publisherId = getPublisherId(network);
     this.client = getSuiClient(network);
@@ -80,13 +80,13 @@ export abstract class BaseContract {
     try {
       const query = {
         MoveModule: {
-          package: this.packageId,
+          package: this.latestPackageId,
           module,
         },
       };
       
       if (eventType) {
-        (query as Record<string, unknown>).MoveEventType = `${this.packageId}::${module}::${eventType}`;
+        (query as Record<string, unknown>).MoveEventType = `${this.latestPackageId}::${module}::${eventType}`;
       }
 
       return await this.client.queryEvents({

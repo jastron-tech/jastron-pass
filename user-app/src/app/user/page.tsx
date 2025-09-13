@@ -14,13 +14,152 @@ import {
   formatAddress,
   formatBalance,
   createContract,
-  JASTRON_PASS_PACKAGE,
-  getPackageId,
+  JASTRON_PASS,
+  getStructType,
+  getEventType,
   getPlatformId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
+import { SuiClient } from '@mysten/sui.js/client';
+import { SuiNetwork } from '@/lib/sui-config';
+
+// Helper function to parse LinkedTable serialized data to extract activity IDs
+async function parseLinkedTableActivities(serializedData: number[], suiClient: SuiClient, currentNetwork: SuiNetwork): Promise<string[]> {
+  try {
+    console.log('Parsing LinkedTable serialized data:', serializedData.length, 'bytes');
+    
+    // Convert byte array to Uint8Array
+    const bytes = new Uint8Array(serializedData);
+    
+    // The LinkedTable structure contains u64 keys and object IDs as values
+    // We need to parse the BCS-encoded data to extract object IDs
+    
+    // For now, let's try to find object IDs by looking for 0x patterns in the data
+    // This is a simplified approach - in a production app you'd want to use proper BCS decoding
+    const objectIds: string[] = [];
+    
+    // Convert bytes to hex string to look for object ID patterns
+    const hexString = Array.from(bytes)
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+    
+    console.log('Hex representation:', hexString.substring(0, 200) + '...');
+    
+    // Look for potential object IDs (32 bytes = 64 hex chars)
+    // Object IDs typically start with specific patterns
+    for (let i = 0; i < hexString.length - 64; i += 2) {
+      const potentialId = '0x' + hexString.substring(i, i + 64);
+      
+      // Basic validation - object IDs should be valid hex and start with 0x
+      if (potentialId.match(/^0x[0-9a-f]{64}$/i)) {
+        try {
+          // Try to get the object to validate it's a real object ID
+          const obj = await suiClient.getObject({
+            id: potentialId,
+            options: {
+              showContent: true,
+              showType: true,
+            }
+          });
+          
+          if (obj.data?.type && obj.data.type.includes(getStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
+            objectIds.push(potentialId);
+            console.log('Found valid activity ID:', potentialId);
+          }
+        } catch {
+          // Not a valid object ID, continue searching
+          continue;
+        }
+      }
+    }
+    
+    console.log('Extracted activity IDs from LinkedTable:', objectIds);
+    return objectIds;
+  } catch (error) {
+    console.error('Failed to parse LinkedTable:', error);
+    return [];
+  }
+}
+
+// Helper function to get activities from platform object as fallback
+async function getActivitiesFromPlatform(platformId: string, suiClient: SuiClient): Promise<string[]> {
+  try {
+    console.log('Getting platform object directly as fallback:', platformId);
+    
+    // Get the platform object directly
+    const platformObject = await suiClient.getObject({
+      id: platformId,
+      options: {
+        showContent: true,
+        showType: true,
+      }
+    });
+    
+    console.log('Platform object:', platformObject);
+    
+    if (platformObject.data?.content) {
+      const content = platformObject.data.content as Record<string, unknown>;
+      const fields = content.fields as Record<string, unknown>;
+      
+      // Look for activities field in the platform object
+      const activitiesField = fields.activities;
+      console.log('Activities field:', activitiesField);
+      
+      if (activitiesField) {
+        // The activities field is a LinkedTable<u64, ID>
+        // We need to extract the object IDs from the LinkedTable structure
+        const activitiesObj = activitiesField as Record<string, unknown>;
+        console.log('Activities object structure:', activitiesObj);
+        
+        // Try to find object IDs in the LinkedTable structure
+        const objectIds: string[] = [];
+        
+        // Check if it has a fields property with object IDs
+        if (activitiesObj.fields) {
+          const activityFields = activitiesObj.fields as Record<string, unknown>;
+          console.log('Activity fields:', activityFields);
+          
+          // Look for object IDs in the structure
+          for (const [, value] of Object.entries(activityFields)) {
+            if (typeof value === 'string' && value.startsWith('0x')) {
+              objectIds.push(value);
+            } else if (value && typeof value === 'object') {
+              const obj = value as Record<string, unknown>;
+              if (obj.id && typeof obj.id === 'string' && obj.id.startsWith('0x')) {
+                objectIds.push(obj.id);
+              }
+            }
+          }
+        }
+        
+        // Also check if there are any direct object ID references
+        if (activitiesObj.id && typeof activitiesObj.id === 'string' && activitiesObj.id.startsWith('0x')) {
+          objectIds.push(activitiesObj.id);
+        }
+        
+        console.log('Found activity object IDs from platform:', objectIds);
+        return objectIds;
+      }
+      
+      // If no activities field found, check if there are any other fields that might contain activity IDs
+      console.log('All platform fields:', Object.keys(fields));
+      
+      // Look for any field that might contain activity IDs
+      for (const [key, value] of Object.entries(fields)) {
+        if (key.includes('activity') || key.includes('Activity')) {
+          console.log(`Found potential activity field '${key}':`, value);
+        }
+      }
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Failed to get activities from platform:', error);
+    return [];
+  }
+}
 
 interface UserProfile {
   id: string;
@@ -31,6 +170,7 @@ interface UserProfile {
 
 interface Activity {
   id: string;
+  name: string;
   total_supply: number;
   tickets_sold: number;
   ticket_price: number;
@@ -79,7 +219,7 @@ export default function UserPage() {
 
       // Step 2: Find UserCap object
       const userCapObject = objects.data.find(obj => 
-        obj.data?.type?.includes(`${getPackageId(currentNetwork)}::${JASTRON_PASS_PACKAGE.MODULES.USER}::${JASTRON_PASS_PACKAGE.STRUCTS.USER_CAP}`)
+        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.USER, JASTRON_PASS.STRUCTS.USER_CAP, currentNetwork, 'v1'))
       );
 
       if (!userCapObject?.data?.content) {
@@ -143,7 +283,7 @@ export default function UserPage() {
 
       // Find ProtectedTicket objects
       const ticketObjects = objects.data.filter(obj => 
-        obj.data?.type?.includes('jastron_pass::ticket::ProtectedTicket')
+        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.PROTECTED_TICKET, currentNetwork, 'v1'))
       );
 
       const tickets: Ticket[] = [];
@@ -167,46 +307,153 @@ export default function UserPage() {
       console.error('Failed to load user tickets:', error);
       setResult(`載入票券失敗: ${error}`);
     }
-  }, [address, suiClient]);
+  }, [address, suiClient, currentNetwork]);
 
   const loadAvailableActivities = useCallback(async () => {
     if (!suiClient) return;
     
     try {
-      console.log('Loading available activities...');
+      console.log('Loading available activities from platform...');
+      setLoading(true);
       
-      // For demo purposes, we'll create mock activities
-      // In a real app, you'd query activities from a database or indexer
-
-      // For demo purposes, create some mock activities
-      // Use fixed timestamps to avoid hydration mismatch
-      const now = 1700000000000; // Fixed timestamp for consistent SSR
-      const mockActivities: Activity[] = [
-        {
-          id: '0x1',
-          total_supply: 100,
-          tickets_sold: 25,
-          ticket_price: 1000000000, // 1 SUI in MIST
-          organizer_profile_id: '0x2',
-          sale_ended_at: now + 7 * 24 * 60 * 60 * 1000, // 7 days from now
-        },
-        {
-          id: '0x3',
-          total_supply: 50,
-          tickets_sold: 10,
-          ticket_price: 2000000000, // 2 SUI in MIST
-          organizer_profile_id: '0x4',
-          sale_ended_at: now + 14 * 24 * 60 * 60 * 1000, // 14 days from now
+      const contract = jastronPassContract;
+      const platformId = getPlatformId(currentNetwork);
+      
+      // Try to get activities from platform object directly
+      let activities: string[] = [];
+      
+      try {
+        // First try the contract function
+        const activitiesResult = await contract.listActivitiesValue(platformId);
+        console.log('Raw activities from platform:', activitiesResult);
+        
+        // Extract the LinkedTable data from DevInspectResults
+        const linkedTableData = activitiesResult?.results?.[0]?.returnValues?.[0];
+        console.log('LinkedTable data:', linkedTableData);
+        
+        if (linkedTableData && Array.isArray(linkedTableData) && linkedTableData.length >= 2) {
+          // linkedTableData[0] contains the serialized LinkedTable data
+          // linkedTableData[1] contains the type information
+          const serializedData = linkedTableData[0] as number[];
+          const typeInfo = linkedTableData[1] as string;
+          
+          console.log('Serialized LinkedTable data:', serializedData);
+          console.log('Type info:', typeInfo);
+          
+          // Parse the LinkedTable to extract activity IDs
+          activities = await parseLinkedTableActivities(serializedData, suiClient, currentNetwork);
+          console.log('Parsed activity IDs from LinkedTable:', activities);
+          
+          // If no activities found from LinkedTable, try platform object as fallback
+          if (activities.length === 0) {
+            activities = await getActivitiesFromPlatform(platformId, suiClient);
+            console.log('Fallback - got activities from platform object:', activities);
+          }
         }
-      ];
-
-      setAvailableActivities(mockActivities);
-      console.log('Loaded activities:', mockActivities);
+      } catch (error) {
+        console.warn('Failed to get activities from contract function, trying direct platform object:', error);
+        // Fallback to getting activities from platform object directly
+        activities = await getActivitiesFromPlatform(platformId, suiClient);
+        console.log('Fallback - got activities from platform object:', activities);
+      }
+      
+      // If still no activities found, try to get activities from events
+      if (activities.length === 0) {
+        try {
+          console.log('Trying to get activities from events...');
+          const events = await suiClient.queryEvents({
+            query: {
+              MoveEventType: getEventType(JASTRON_PASS.MODULES.APP, JASTRON_PASS.EVENTS.ACTIVITY_CREATED, currentNetwork, 'v1')
+            },
+            limit: 50,
+            order: 'descending'
+          });
+          
+          console.log('Activity events:', events);
+          
+          const activityIds: string[] = [];
+          for (const event of events.data) {
+            if (event.parsedJson && typeof event.parsedJson === 'object') {
+              const eventData = event.parsedJson as Record<string, unknown>;
+              if (eventData.activity_id && typeof eventData.activity_id === 'string') {
+                activityIds.push(eventData.activity_id);
+              }
+            }
+          }
+          
+          if (activityIds.length > 0) {
+            activities = activityIds;
+            console.log('Found activities from events:', activities);
+          }
+        } catch (error) {
+          console.warn('Failed to get activities from events:', error);
+        }
+      }
+      
+      if (activities && activities.length > 0) {
+        // Convert the activities to our Activity interface
+        const formattedActivities: Activity[] = activities.map((activityId: string) => ({
+          id: activityId,
+          name: '', // Will be filled by individual activity queries
+          total_supply: 0, // Will be filled by individual activity queries
+          tickets_sold: 0, // Will be filled by individual activity queries
+          ticket_price: 0, // Will be filled by individual activity queries
+          organizer_profile_id: '', // Will be filled by individual activity queries
+          sale_ended_at: 0, // Will be filled by individual activity queries
+        }));
+        
+        // For each activity, get detailed information
+        const detailedActivities: Activity[] = [];
+        for (const activity of formattedActivities) {
+          try {
+            const activityId = String(activity.id);
+            const activityDetails = await contract.getObject(activityId);
+            
+            if (activityDetails && activityDetails.data?.content) {
+              const content = activityDetails.data.content as Record<string, unknown>;
+              const fields = content.fields as Record<string, unknown>;
+              
+              // Get activity name using the contract function
+              const activityNameResult = await contract.getActivityNameValue(activityId);
+              const activityNameRaw = activityNameResult?.results?.[0]?.returnValues?.[0];
+              const activityName = typeof activityNameRaw === 'string' ? activityNameRaw : '';
+              
+              const detailedActivity: Activity = {
+                id: activityId,
+                name: activityName || '未命名活動',
+                total_supply: parseInt(String(fields.total_supply)) || 0,
+                tickets_sold: parseInt(String(fields.tickets_sold)) || 0,
+                ticket_price: parseInt(String(fields.ticket_price)) || 0,
+                organizer_profile_id: String(fields.organizer_profile_id || ''),
+                sale_ended_at: parseInt(String(fields.sale_ended_at)) || 0,
+              };
+              
+              detailedActivities.push(detailedActivity);
+            }
+          } catch (error) {
+            console.warn(`Failed to load details for activity ${activity.id}:`, error);
+            // Still add the basic activity info
+            detailedActivities.push(activity);
+          }
+        }
+        
+        setAvailableActivities(detailedActivities);
+        console.log('Loaded detailed activities:', detailedActivities);
+        setResult(`成功載入 ${detailedActivities.length} 個活動`);
+      } else {
+        setAvailableActivities([]);
+        setResult('目前沒有可用的活動');
+        console.log('No activities found on platform');
+      }
     } catch (error) {
       console.error('Failed to load activities:', error);
       setResult(`載入活動失敗: ${error}`);
+      // Fallback to empty array
+      setAvailableActivities([]);
+    } finally {
+      setLoading(false);
     }
-  }, [suiClient]);
+  }, [suiClient, jastronPassContract, currentNetwork]);
 
   const loadSuiBalance = useCallback(async () => {
     if (!address || !suiClient) return;
@@ -330,36 +577,49 @@ export default function UserPage() {
     }
 
     setLoading(true);
+    setResult('正在搜尋活動...');
+    
     try {
-      // Try to get the activity object
-      const activity = await suiClient.getObject({
-        id: searchActivityId,
-        options: {
-          showContent: true,
-          showType: true,
-        }
-      });
+      const contract = jastronPassContract;
+      
+      // Try to get the activity object directly
+      const activity = await contract.getObject(searchActivityId);
+      console.log('Searched activity object:', activity);
 
-      if (activity.data?.content) {
+      if (activity && activity.data?.content) {
         const content = activity.data.content as Record<string, unknown>;
         const fields = content.fields as Record<string, unknown>;
-        const activityData: Activity = {
-          id: ((fields.id as Record<string, unknown>).id as string),
-          total_supply: parseInt(fields.total_supply as string),
-          tickets_sold: parseInt(fields.tickets_sold as string),
-          ticket_price: parseInt(fields.ticket_price as string),
-          organizer_profile_id: fields.organizer_profile_id as string,
-          sale_ended_at: parseInt(fields.sale_ended_at as string),
-        };
         
-        setAvailableActivities([activityData]);
-        setResult(`找到活動: ${activityData.id}`);
+        // Check if this is an Activity object
+        if (content.type && typeof content.type === 'string' && content.type.includes(getStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
+          // Get activity name using the contract function
+          const activityNameResult = await contract.getActivityNameValue(searchActivityId);
+          const activityNameRaw = activityNameResult?.results?.[0]?.returnValues?.[0];
+          const activityName = typeof activityNameRaw === 'string' ? activityNameRaw : '';
+          
+          const activityData: Activity = {
+            id: ((fields.id as Record<string, unknown>).id as string),
+            name: activityName || '未命名活動',
+            total_supply: parseInt(fields.total_supply as string),
+            tickets_sold: parseInt(fields.tickets_sold as string),
+            ticket_price: parseInt(fields.ticket_price as string),
+            organizer_profile_id: fields.organizer_profile_id as string,
+            sale_ended_at: parseInt(fields.sale_ended_at as string),
+          };
+          
+          setAvailableActivities([activityData]);
+          setResult(`✅ 找到活動: ${formatAddress(activityData.id)}`);
+          console.log('Found activity:', activityData);
+        } else {
+          setResult('❌ 指定的對象不是有效的活動');
+        }
       } else {
-        setResult('未找到活動');
+        setResult('❌ 未找到活動，請檢查活動ID是否正確');
       }
     } catch (error) {
       console.error('Failed to search activity:', error);
-      setResult(`搜尋活動失敗: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 搜尋活動失敗: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -615,6 +875,10 @@ export default function UserPage() {
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
+                              <Label className="font-medium">活動名稱</Label>
+                              <div className="text-lg font-semibold">{activity.name || '未命名活動'}</div>
+                            </div>
+                            <div className="flex items-center justify-between">
                               <Label className="font-medium">活動ID</Label>
                               <Badge variant="outline">{formatAddress(activity.id)}</Badge>
                             </div>
@@ -637,11 +901,11 @@ export default function UserPage() {
                                 <Label className="text-muted-foreground">狀態</Label>
                                 <Badge variant={
                                   activity.tickets_sold < activity.total_supply && 
-                                  activity.sale_ended_at > 1700000000000 // Use fixed timestamp for consistent rendering
+                                  activity.sale_ended_at > Date.now()
                                     ? "default" : "secondary"
                                 }>
                                   {activity.tickets_sold < activity.total_supply && 
-                                   activity.sale_ended_at > 1700000000000 // Use fixed timestamp for consistent rendering
+                                   activity.sale_ended_at > Date.now()
                                     ? "可購買" : "已售罄/已結束"}
                                 </Badge>
                               </div>
@@ -649,7 +913,7 @@ export default function UserPage() {
                           </div>
                           
                           {activity.tickets_sold < activity.total_supply && 
-                           activity.sale_ended_at > 1700000000000 && ( // Use fixed timestamp for consistent rendering
+                           activity.sale_ended_at > Date.now() && (
                             <Button 
                               onClick={() => handleBuyTicket(activity.id, activity.ticket_price)}
                               disabled={!connected || loading}
