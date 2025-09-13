@@ -1,6 +1,7 @@
 module jastron_pass::user;
 
 use sui::event;
+use sui::table::{Self, Table};
 use std::string::String;
 
 //---errors---
@@ -17,14 +18,21 @@ public struct UserProfile has key, store {
     name: String,
     treasury: address,
     registered_at: u64,
-    verified_at: u64
+    verified_at: u64,
+    attended_activities: Table<ID, u64>, // activity_id -> attendance_timestamp
 }
 
 //---events---
-public struct UserProfileCreated has copy, drop {
+public struct UserProfileRegistered has copy, drop {
     profile_id: ID,
-    user: address,
+    registered_by: address,
     registered_at: u64,
+}
+
+public struct ActivityAttended has copy, drop {
+    user_profile_id: ID,
+    activity_id: ID,
+    attendance_timestamp: u64,
 }
 
 //---functions---
@@ -39,7 +47,8 @@ public(package) fun new(
         name: name,
         treasury: user,
         registered_at: cur_time,
-        verified_at: 0
+        verified_at: 0,
+        attended_activities: table::new(ctx)
     };
 
     let cap = UserCap {
@@ -47,14 +56,29 @@ public(package) fun new(
         profile_id: object::uid_to_inner(&profile.id),
     };
     
-    event::emit(UserProfileCreated {
+    event::emit(UserProfileRegistered {
         profile_id: object::uid_to_inner(&profile.id),
-        user: user,
+        registered_by: user,
         registered_at: cur_time,
     });
 
     (profile, cap)
 }
+
+public(package) fun add_attended_activity(
+    self: &mut UserProfile,
+    activity_id: ID,
+    attendance_timestamp: u64
+) {
+    table::add(&mut self.attended_activities, activity_id, attendance_timestamp);
+    
+    event::emit(ActivityAttended {
+        user_profile_id: object::uid_to_inner(&self.id),
+        activity_id: activity_id,
+        attendance_timestamp: attendance_timestamp,
+    });
+}
+
 
 //---readonly functions---
 public fun get_profile_id(self: &UserProfile): ID {
@@ -63,4 +87,21 @@ public fun get_profile_id(self: &UserProfile): ID {
 
 public fun get_treasury(self: &UserProfile): address {
     self.treasury
+}
+
+public fun has_attended_activity(self: &UserProfile, activity_id: ID): bool {
+    table::contains(&self.attended_activities, activity_id)
+}
+
+// More efficient version that doesn't throw on missing key
+public fun has_attended_activity_safe(self: &UserProfile, activity_id: ID): bool {
+    table::contains(&self.attended_activities, activity_id)
+}
+
+public fun get_attendance_timestamp(self: &UserProfile, activity_id: ID): u64 {
+    *table::borrow(&self.attended_activities, activity_id)
+}
+
+public fun get_attended_activities_count(self: &UserProfile): u64 {
+    table::length(&self.attended_activities)
 }

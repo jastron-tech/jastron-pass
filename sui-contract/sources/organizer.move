@@ -6,10 +6,10 @@ use std::string::String;
 //const EOrganizer: u64 = 200;
 
 //---events---
-public struct OrganizerProfileCreated has copy, drop {
+public struct OrganizerProfileRegistered has copy, drop {
     profile_id: ID,
-    created_by: address,
-    created_at: u64,
+    registered_by: address,
+    registered_at: u64,
 }
 
 //---data types---
@@ -47,10 +47,10 @@ public(package) fun new(name: String, ctx: &mut TxContext): (OrganizerProfile, O
         profile_id: object::uid_to_inner(&profile.id),
     };
 
-    event::emit(OrganizerProfileCreated {
+    event::emit(OrganizerProfileRegistered {
         profile_id: object::uid_to_inner(&profile.id),
-        created_by: caller,
-        created_at: cur_time,
+        registered_by: caller,
+        registered_at: cur_time,
     });
 
     (profile, cap)

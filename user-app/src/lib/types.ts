@@ -66,7 +66,7 @@ export interface Activity {
 export interface Ticket {
   id: string;
   activity_id: string;
-  redeemed_at: number;
+  used_at: number;
 }
 
 export interface ProtectedTicket {

@@ -102,10 +102,10 @@ export const JASTRON_PASS_PACKAGE = {
     // Ticket module (public functions only)
     TICKET_GET_ID: 'get_id',
     TICKET_GET_ACTIVITY_ID: 'get_activity_id',
-    TICKET_IS_REDEEMED: 'is_redeemed',
+    TICKET_IS_CLIPPED: 'is_clipped',
+    TICKET_IS_BOUND: 'is_bound',
     TICKET_GET_INNER_ID: 'get_inner_id',
     TICKET_GET_INNER_ACTIVITY_ID: 'get_inner_activity_id',
-    TICKET_IS_INNER_REDEEMED: 'is_inner_redeemed',
     
     // Ticket Transfer Policy module (public functions only)
     NEW_POLICY: 'new_policy',

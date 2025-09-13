@@ -66,15 +66,17 @@ public struct KioskTicketDelisted has copy, drop {
 
 //---functions---
 #[allow(lint(share_owned, self_transfer))]
-public fun register_organizer_profile(name: String, ctx: &mut TxContext): OrganizerCap {
+public fun register_organizer_profile(platform: &mut Platform, name: String, ctx: &mut TxContext): OrganizerCap {
     let (profile, cap) = organizer::new(name, ctx);
+    platform.register_organizer(profile.get_profile_id(), ctx);
     transfer::public_share_object(profile);
     cap
 }
 
 #[allow(lint(share_owned, self_transfer))]
-public fun register_user_profile(name: String, ctx: &mut TxContext): UserCap {
+public fun register_user_profile(platform: &mut Platform, name: String, ctx: &mut TxContext): UserCap {
     let (profile, cap) = user::new(name, ctx);
+    platform.register_user(profile.get_profile_id(), ctx);
     transfer::public_share_object(profile);
     cap
 }

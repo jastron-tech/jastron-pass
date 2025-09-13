@@ -39,7 +39,7 @@ interface Activity {
 interface Ticket {
   id: string;
   activity_id: string;
-  redeemed_at: number;
+  used_at: number;
   activity?: Activity;
 }
 
@@ -151,7 +151,7 @@ export default function UserPage() {
           const ticket: Ticket = {
             id: ((ticketFields.id as Record<string, unknown>).id as string),
             activity_id: ticketFields.activity_id as string,
-            redeemed_at: parseInt(ticketFields.redeemed_at as string),
+            used_at: parseInt(ticketFields.used_at as string),
           };
           tickets.push(ticket);
         }

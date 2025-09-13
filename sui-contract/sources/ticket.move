@@ -5,13 +5,16 @@ use sui::event;
 
 //---errors---
 const ETicket: u64 = 500;
-const ETicketHasBeenRedeemed: u64 = 1 + ETicket;
+const ETicketHasBeenClipped: u64 = 1 + ETicket;
+const ETicketHasBeenBound: u64 = 2 + ETicket;
+const ETicketNotBound: u64 = 3 + ETicket;
 
 //---data types---
 public struct Ticket has key, store {
     id: UID,
     activity_id: ID,
-    redeemed_at: u64,
+    bound_at: u64,
+    clipped_at: u64,
 }
 
 public struct ProtectedTicket has key {
@@ -27,7 +30,40 @@ public struct TicketMinted has copy, drop {
     created_by: address,
 }
 
+public struct TicketBound has copy, drop {
+    ticket_id: ID,
+    bound_at: u64,
+}
+
+public struct TicketClipped has copy, drop {
+    ticket_id: ID,
+    clipped_at: u64,
+    clipped_by: address,
+}
+
 //---functions---
+public(package) fun bind(self: &mut ProtectedTicket, ctx: &TxContext) {
+    assert!(!self.ticket.is_bound(), ETicketHasBeenBound);
+
+    self.ticket.bound_at = tx_context::epoch(ctx);
+    event::emit(TicketBound {
+        ticket_id: object::uid_to_inner(&self.ticket.id),
+        bound_at: tx_context::epoch(ctx),
+    });
+}
+
+//clip the ticket (use the ticket)
+public(package) fun clip(self: &mut ProtectedTicket, ctx: &TxContext) {
+    assert!(self.ticket.is_bound(), ETicketNotBound);
+    assert!(!self.ticket.is_clipped(), ETicketHasBeenClipped);
+
+    self.ticket.clipped_at = tx_context::epoch(ctx);
+    event::emit(TicketClipped {
+        ticket_id: object::uid_to_inner(&self.ticket.id),
+        clipped_at: tx_context::epoch(ctx),
+        clipped_by: tx_context::sender(ctx),
+    });
+}
 
 //---internal functions---
 public(package) fun mint(activity_id: &Activity, ctx: &mut TxContext): ProtectedTicket {
@@ -36,8 +72,10 @@ public(package) fun mint(activity_id: &Activity, ctx: &mut TxContext): Protected
     
     let ticket = Ticket {
         id: object::new(ctx),
+
         activity_id: activity_id.get_id(),
-        redeemed_at: 0,
+        bound_at: 0,
+        clipped_at: 0,
     };
     let ticket_id = object::uid_to_inner(&ticket.id);
 
@@ -66,7 +104,7 @@ public(package) fun wrap(self: Ticket, ctx: &mut TxContext): ProtectedTicket {
 }
 
 public(package) fun transfer(self: ProtectedTicket, to: address) {
-    assert!(!self.ticket.is_redeemed(), ETicketHasBeenRedeemed);
+    assert!(!self.ticket.is_bound(), ETicketHasBeenBound);
     transfer::transfer(self, to);
 }
 
@@ -79,8 +117,12 @@ public fun get_activity_id(self: &Ticket): ID {
     self.activity_id
 }
 
-public fun is_redeemed(self: &Ticket): bool {
-    self.redeemed_at > 0
+public fun is_clipped(self: &Ticket): bool {
+    self.clipped_at > 0
+}
+
+public fun is_bound(self: &Ticket): bool {
+    self.bound_at > 0
 }
 
 public fun get_inner_id(self: &ProtectedTicket): ID {
@@ -91,6 +133,3 @@ public fun get_inner_activity_id(self: &ProtectedTicket): ID {
     self.ticket.get_activity_id()
 }
 
-public fun is_inner_redeemed(self: &ProtectedTicket): bool {
-    self.ticket.is_redeemed()
-}
