@@ -17,8 +17,8 @@ public struct PLATFORM has drop {}
 public struct Platform has key {
     id: UID,
     treasury: address,
-    registered_users: Table<ID, u64>, // user_address -> registration_timestamp
-    registered_organizers: Table<ID, u64>, // organizer_address -> registration_timestamp
+    registered_users: Table<ID, u64>, // user_address -> registered_at
+    registered_organizers: Table<ID, u64>, // organizer_address -> registered_at
     activities: LinkedTable<u64, ID>,
     num_activities: u64,
 }
@@ -94,11 +94,11 @@ public fun is_organizer_registered(self: &Platform, organizer_profile: ID): bool
     table::contains(&self.registered_organizers, organizer_profile)
 }
 
-public fun get_user_registration_timestamp(self: &Platform, user_profile: ID): u64 {
+public fun get_user_registered_at(self: &Platform, user_profile: ID): u64 {
     *table::borrow(&self.registered_users, user_profile)
 }
 
-public fun get_organizer_registration_timestamp(self: &Platform, organizer_profile: ID): u64 {
+public fun get_organizer_registered_at(self: &Platform, organizer_profile: ID): u64 {
     *table::borrow(&self.registered_organizers, organizer_profile)
 }
 

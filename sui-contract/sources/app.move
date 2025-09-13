@@ -215,9 +215,10 @@ public fun purchase_ticket(
     activity: &Activity,
     organizer_profile: &OrganizerProfile,
     platform: &Platform,
+    ticket_receiver_profile: &UserProfile,
     transfer_policy: &mut TransferPolicy<Ticket>,
     ctx: &mut TxContext,
-): (ProtectedTicket, Coin<SUI>) {
+): Coin<SUI> {
     let ticket_price = get_ticket_price(kiosk, ticket_id);
     let royalty_fee = ticket_transfer_policy::calculate_royalty_fee(transfer_policy, ticket_price);
     let platform_fee = ticket_transfer_policy::calculate_platform_fee(transfer_policy, ticket_price);
@@ -248,7 +249,9 @@ public fun purchase_ticket(
         purchased_at: tx_context::epoch(ctx),
     });
 
-    (ticket.wrap(ctx), payment)
+    ticket.wrap(ctx).transfer(ticket_receiver_profile);
+
+    payment
 }
 
 public fun get_ticket_price(kiosk: &Kiosk, ticket_id: ID): u64 {
