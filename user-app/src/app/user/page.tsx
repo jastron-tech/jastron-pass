@@ -17,15 +17,14 @@ import {
   JASTRON_PASS,
   getJastronPassStructType,
   getPlatformId,
-  getSuiStructType,
-  getGenericStructType,
-  SUI,
-  getLatestPackageId
+  getLatestPackageId,
+  getTicketTransferPolicyId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
 import { toHexString, parseLinkedTableValues } from '@/lib/utils';
+import { bcs } from '@mysten/bcs';
 interface UserProfile {
   id: string;
   name: string;
@@ -438,24 +437,13 @@ export default function UserPage() {
         throw new Error('無法獲取用戶資料');
       }
 
-      // Step 2: Find transfer policy
-      setResult('正在尋找轉移政策...');
+      // Step 2: Get transfer policy ID from config
+      setResult('正在獲取轉移政策...');
       
-      // Look for transfer policy in owned objects
-      const ownedObjects = await suiClient.getOwnedObjects({
-        owner: address,
-        options: { showContent: true, showType: true }
-      });
+      const transferPolicyId = getTicketTransferPolicyId(currentNetwork);
       
-      const ticketTransferPolicyStruct = getGenericStructType(SUI.STRUCTS.TRANSFER_POLICY, [getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.TICKET, currentNetwork, 'v1')]);
-      const transferPolicyStruct = getSuiStructType(SUI.MODULES.TRANSFER_POLICY, ticketTransferPolicyStruct);
-
-      const transferPolicyObject = ownedObjects.data.find(obj => 
-        obj.data?.type?.includes(transferPolicyStruct)
-      );
-      
-      if (!transferPolicyObject?.data?.content) {
-        throw new Error('未找到轉移政策，請先創建轉移政策');
+      if (!transferPolicyId) {
+        throw new Error('未配置轉移政策ID，請檢查網路設定');
       }
 
       // Step 3: Calculate platform fee based on transfer policy
@@ -466,14 +454,14 @@ export default function UserPage() {
         // Use contract to calculate platform fee
         const contract = jastronPassContract;
         const platformFeeResult = await contract.calculatePlatformFeeValue(
-          transferPolicyObject.data.objectId,
+          transferPolicyId,
           ticketPrice
         );
         
         // Extract platform fee from result
         const platformFeeData = platformFeeResult?.results?.[0]?.returnValues?.[0];
         if (platformFeeData && Array.isArray(platformFeeData) && platformFeeData.length > 0) {
-          platformFee = Number(platformFeeData[0]);
+          platformFee = Number(bcs.u64().parse(new Uint8Array(platformFeeData[0] as number[])));
         }
       } catch (error) {
         console.warn('Failed to calculate platform fee from policy, using fallback:', error);
@@ -508,7 +496,7 @@ export default function UserPage() {
           tx.object(activityId),
           payment, // Use the split coin as payment
           tx.object(platformId),
-          tx.object(transferPolicyObject.data.objectId),
+          tx.object(transferPolicyId),
           tx.object(organizerProfileId),
           tx.object(userProfile.id),
         ],
