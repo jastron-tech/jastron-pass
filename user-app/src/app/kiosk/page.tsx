@@ -156,41 +156,60 @@ export default function KioskPage() {
         }
       });
 
-      if (!kioskObject.data?.content) {
+      if (!kioskObject.data?.objectId) {
         throw new Error('無法獲取 Kiosk 對象');
       }
 
-      const kioskContent = kioskObject.data.content as Record<string, unknown>;
-      const kioskFields = kioskContent.fields as Record<string, unknown>;
+      // Get dynamic fields with pagination
+      let allDynamicFields: Array<{
+        objectId: string;
+        objectType: string;
+        name: string;
+      }> = [];
+      let hasNextPage = true;
+      let nextCursor: string | null = null;
       
-      console.log('Kiosk content:', kioskContent);
-      console.log('Kiosk fields:', kioskFields);
-      console.log('Available fields in kiosk:', Object.keys(kioskFields));
+      while (hasNextPage) {
+        const dynamicFieldsResponse = await suiClient.getDynamicFields({
+          parentId: kioskObject.data.objectId,
+          cursor: nextCursor,
+          limit: 50, // Fetch 50 items per page
+        });
+        
+        // Convert DynamicFieldInfo to our expected format
+        const convertedFields = dynamicFieldsResponse.data.map(field => ({
+          objectId: field.objectId,
+          objectType: field.objectType || '',
+          name: String(field.name),
+        }));
+        
+        allDynamicFields = allDynamicFields.concat(convertedFields);
+        hasNextPage = dynamicFieldsResponse.hasNextPage;
+        nextCursor = dynamicFieldsResponse.nextCursor;
+        
+        console.log(`Fetched ${dynamicFieldsResponse.data.length} dynamic fields, hasNextPage: ${hasNextPage}`);
+      }
       
-      // Check item count first
-      const itemCount = kioskFields.item_count as number;
-      console.log('Kiosk item count:', itemCount);
+      console.log('Total dynamic fields:', allDynamicFields.length);
+      console.log('All dynamic fields:', allDynamicFields);
       
-      if (itemCount === 0) {
-        console.log('Kiosk has no items listed');
+      // Filter for ticket type objects
+      const ticketType = getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.TICKET, currentNetwork, 'v1');
+      const ticketDynamicFields = allDynamicFields.filter(field => 
+        field.objectType && field.objectType.includes(ticketType)
+      );
+      
+      console.log('Filtered ticket dynamic fields:', ticketDynamicFields);
+      
+      if (ticketDynamicFields.length === 0) {
+        console.log('No ticket items found in kiosk');
         setListedTickets([]);
         setResult('Kiosk 中沒有列出的票券');
         return;
       }
       
-      // Get items from kiosk - check if items field exists
-      const items = kioskFields.items as Record<string, unknown> | undefined;
-      console.log('Kiosk items structure:', items);
-      
-      if (!items || !items.contents || !Array.isArray(items.contents)) {
-        console.log('No items found in kiosk or items structure is unexpected');
-        setListedTickets([]);
-        setResult('Kiosk 中沒有列出的票券');
-        return;
-      }
-      
-      const itemIds = items.contents as string[];
-      console.log('Found items in kiosk:', itemIds);
+      const itemIds = ticketDynamicFields.map(field => field.objectId);
+      console.log('Found ticket item IDs:', itemIds, ticketDynamicFields);
 
       const listedTickets: ListedTicket[] = [];
       
@@ -331,6 +350,75 @@ export default function KioskPage() {
       console.error('Failed to search kiosk:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       setResult(`❌ 搜尋 Kiosk 失敗: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelistTicket = async (ticketId: string) => {
+    if (!connected || !address || !executeTransaction) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    if (!kioskInfo) {
+      setResult('請先選擇 Kiosk');
+      return;
+    }
+
+    if (!kioskInfo.capId) {
+      setResult('無法找到 KioskOwnerCap，請確保您擁有此 Kiosk 的權限');
+      return;
+    }
+
+    setLoading(true);
+    setResult('正在取消列出票券...');
+    
+    try {
+      // Get user profile for receiver
+      const userObjects = await suiClient.getOwnedObjects({
+        owner: address,
+        options: { showContent: true, showType: true }
+      });
+      
+      const userCapObject = userObjects.data.find(obj => 
+        obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.USER, JASTRON_PASS.STRUCTS.USER_CAP, currentNetwork, 'v1'))
+      );
+      
+      if (!userCapObject?.data?.content) {
+        throw new Error('請先註冊用戶資料');
+      }
+      
+      const userCapContent = userCapObject.data.content as Record<string, unknown>;
+      const userCapFields = userCapContent.fields as Record<string, unknown>;
+      const userProfileId = userCapFields.profile_id as string;
+
+      console.log('Delist ticket from kiosk:', kioskInfo.id, kioskInfo.capId, ticketId, userProfileId);
+
+      // Use contract utility function
+      const contract = createContract(currentNetwork);
+      const tx = await contract.delistTicketFromKiosk(
+        kioskInfo.id,
+        kioskInfo.capId,
+        ticketId,
+        userProfileId
+      );
+
+      setResult('正在執行取消列出交易...');
+      const result = await executeTransaction(tx);
+
+      console.log('Delist ticket result:', result);
+      setResult(`✅ 票券取消列出成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh data
+      setTimeout(() => {
+        loadListedTickets(kioskInfo.id);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to delist ticket:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 票券取消列出失敗: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -673,24 +761,39 @@ export default function KioskPage() {
                                 </div>
                               </div>
                               
-                              <div className="flex gap-2">
-                                <Input
-                                  type="number"
-                                  placeholder="確認購買價格 (MIST)"
-                                  value={selectedTicketForPurchase === ticket.id ? purchasePrice : ''}
-                                  onChange={(e) => {
-                                    setSelectedTicketForPurchase(ticket.id);
-                                    setPurchasePrice(e.target.value);
-                                  }}
-                                  className="flex-1"
-                                />
-                                <Button
-                                  onClick={() => handlePurchaseTicket(ticket.id, ticket.price)}
-                                  disabled={loading || selectedTicketForPurchase !== ticket.id || !purchasePrice}
-                                  size="sm"
-                                >
-                                  {loading ? '購買中...' : '購買票券'}
-                                </Button>
+                              <div className="space-y-3">
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="number"
+                                    placeholder="確認購買價格 (MIST)"
+                                    value={selectedTicketForPurchase === ticket.id ? purchasePrice : ''}
+                                    onChange={(e) => {
+                                      setSelectedTicketForPurchase(ticket.id);
+                                      setPurchasePrice(e.target.value);
+                                    }}
+                                    className="flex-1"
+                                  />
+                                  <Button
+                                    onClick={() => handlePurchaseTicket(ticket.id, ticket.price)}
+                                    disabled={loading || selectedTicketForPurchase !== ticket.id || !purchasePrice}
+                                    size="sm"
+                                    variant="default"
+                                  >
+                                    {loading ? '購買中...' : '購買票券'}
+                                  </Button>
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => handleDelistTicket(ticket.id)}
+                                    disabled={loading}
+                                    size="sm"
+                                    variant="destructive"
+                                    className="flex-1"
+                                  >
+                                    {loading ? '取消中...' : '取消列出'}
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </CardContent>

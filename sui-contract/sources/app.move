@@ -205,6 +205,29 @@ public fun delist_ticket(
     protected_ticket
 }
 
+public fun delist_ticket_from_kiosk(
+    kiosk: &mut Kiosk,
+    kiosk_cap: &KioskOwnerCap,
+    ticket_id: ID,
+    receiver_profile: &UserProfile,
+    ctx: &mut TxContext,
+) {
+    let caller = tx_context::sender(ctx);
+    assert!(caller == receiver_profile.get_treasury(), EUserProfileMismatch);
+
+    let kiosk_id = object::uid_to_inner(kiosk::uid(kiosk));
+    df::remove<TicketListing, u64>(kiosk.uid_mut_as_owner(kiosk_cap), TicketListing { id: ticket_id });
+    let ticket = kiosk::take(kiosk, kiosk_cap, ticket_id);
+
+    event::emit(KioskTicketDelisted {
+        kiosk_id,
+        ticket_id,
+        delisted_at: tx_context::epoch(ctx),
+    });
+
+    ticket::wrap(ticket, ctx).transfer(receiver_profile);
+}
+
 public fun purchase_ticket(
     kiosk: &mut Kiosk,
     mut payment: Coin<SUI>,

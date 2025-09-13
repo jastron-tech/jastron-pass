@@ -95,6 +95,15 @@ export class JastronPassContract {
     return this.app.delistTicket(kiosk, kioskCap, ticketId);
   }
 
+  async delistTicketFromKiosk(
+    kiosk: string,
+    kioskCap: string,
+    ticketId: string,
+    receiverProfile: string
+  ) {
+    return this.app.delistTicketFromKiosk(kiosk, kioskCap, ticketId, receiverProfile);
+  }
+
   async purchaseTicket(
     kiosk: string,
     payment: string,

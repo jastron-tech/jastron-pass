@@ -139,8 +139,22 @@ export class AppModule extends BaseContract {
       arguments: [
         tx.object(kiosk),
         tx.object(kioskCap),
-        tx.pure.string(ticketId),
+        tx.object(ticketId),
       ],
+    });
+    return tx;
+  }
+
+  async delistTicketFromKiosk(
+    kiosk: string,
+    kioskCap: string,
+    ticketId: string,
+    receiverProfile: string
+  ) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.DELIST_TICKET_FROM_KIOSK}`,
+      arguments: [tx.object(kiosk), tx.object(kioskCap), tx.object(ticketId), tx.object(receiverProfile)],
     });
     return tx;
   }
@@ -160,7 +174,7 @@ export class AppModule extends BaseContract {
       arguments: [
         tx.object(kiosk),
         tx.object(payment),
-        tx.pure.string(ticketId),
+        tx.object(ticketId),
         tx.object(activity),
         tx.object(organizerProfile),
         tx.object(platform),
@@ -174,7 +188,7 @@ export class AppModule extends BaseContract {
     const tx = this.createTransaction();
     tx.moveCall({
       target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.GET_TICKET_PRICE}`,
-      arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
+      arguments: [tx.object(kiosk), tx.object(ticketId)],
     });
     return tx;
   }
@@ -188,7 +202,7 @@ export class AppModule extends BaseContract {
     const tx = this.createTransaction();
     tx.moveCall({
       target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.IS_TICKET_LISTED}`,
-      arguments: [tx.object(kiosk), tx.pure.string(ticketId)],
+      arguments: [tx.object(kiosk), tx.object(ticketId)],
     });
     return tx;
   }
