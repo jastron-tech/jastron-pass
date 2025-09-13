@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { toHex } from '@mysten/bcs';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -69,4 +70,12 @@ export function copyToClipboard(text: string): Promise<void> {
   document.execCommand('copy');
   document.body.removeChild(textArea);
   return Promise.resolve();
+}
+
+export function toHexString(byteArray: number[]) {
+  const hexString = toHex(new Uint8Array(byteArray));
+  // Pad or truncate to 64 characters for valid Sui object ID
+  const paddedHex = hexString.padEnd(64, '0').substring(0, 64);
+  const result = '0x' + paddedHex;
+  return result;
 }

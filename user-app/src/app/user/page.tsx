@@ -24,59 +24,97 @@ import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
 import { SuiClient } from '@mysten/sui.js/client';
 import { SuiNetwork } from '@/lib/sui-config';
+import { toHexString } from '@/lib/utils';
 
-// Helper function to parse LinkedTable serialized data to extract activity IDs
-async function parseLinkedTableActivities(serializedData: number[], suiClient: SuiClient, currentNetwork: SuiNetwork): Promise<string[]> {
+// Helper function to parse LinkedTable by fetching dynamic fields
+async function parseLinkedTableActivities(parentNodeId: string, suiClient: SuiClient, currentNetwork: SuiNetwork): Promise<string[]> {
   try {
-    console.log('Parsing LinkedTable serialized data:', serializedData.length, 'bytes');
+    console.log(`Fetching dynamic fields for parent node: ${parentNodeId}`);
     
-    // Convert byte array to Uint8Array
-    const bytes = new Uint8Array(serializedData);
-    
-    // The LinkedTable structure contains u64 keys and object IDs as values
-    // We need to parse the BCS-encoded data to extract object IDs
-    
-    // For now, let's try to find object IDs by looking for 0x patterns in the data
-    // This is a simplified approach - in a production app you'd want to use proper BCS decoding
-    const objectIds: string[] = [];
-    
-    // Convert bytes to hex string to look for object ID patterns
-    const hexString = Array.from(bytes)
-      .map(byte => byte.toString(16).padStart(2, '0'))
-      .join('');
-    
-    console.log('Hex representation:', hexString.substring(0, 200) + '...');
-    
-    // Look for potential object IDs (32 bytes = 64 hex chars)
-    // Object IDs typically start with specific patterns
-    for (let i = 0; i < hexString.length - 64; i += 2) {
-      const potentialId = '0x' + hexString.substring(i, i + 64);
-      
-      // Basic validation - object IDs should be valid hex and start with 0x
-      if (potentialId.match(/^0x[0-9a-f]{64}$/i)) {
-        try {
-          // Try to get the object to validate it's a real object ID
-          const obj = await suiClient.getObject({
-            id: potentialId,
-            options: {
-              showContent: true,
-              showType: true,
-            }
+    const allKeysAndNodeIds: Array<{ key: bigint; nodeId: string }> = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+
+    // 1. & 2. Fetch all dynamic fields (handling pagination)
+    while (hasNextPage) {
+      const dynamicFieldsPage = await suiClient.getDynamicFields({
+        parentId: parentNodeId,
+        cursor: cursor,
+      });
+
+      for (const fieldInfo of dynamicFieldsPage.data) {
+        if (fieldInfo.name.type === 'u64') {
+          allKeysAndNodeIds.push({
+            key: BigInt(String(fieldInfo.name.value)), // The key is the u64
+            nodeId: fieldInfo.objectId,      // The ID of the Node object
           });
-          
-          if (obj.data?.type && obj.data.type.includes(getStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
-            objectIds.push(potentialId);
-            console.log('Found valid activity ID:', potentialId);
+        }
+      }
+
+      cursor = dynamicFieldsPage.nextCursor;
+      hasNextPage = dynamicFieldsPage.hasNextPage;
+    }
+
+    console.log(`Found ${allKeysAndNodeIds.length} entries. Now fetching node objects...`);
+
+    if (allKeysAndNodeIds.length === 0) {
+      console.log('No dynamic fields found for platform object');
+      return [];
+    }
+
+    // 3. Fetch the content of all Node objects in a single multi-get call for efficiency
+    const nodeIds = allKeysAndNodeIds.map(item => item.nodeId);
+    console.log('nodeIds:', nodeIds);
+    const nodeObjects = await suiClient.multiGetObjects({
+      ids: nodeIds,
+      options: { showContent: true },
+    });
+
+    console.log('nodeObjects:', nodeObjects);
+
+    // 4. Parse the Node objects to extract the final values
+    const activityIds: string[] = [];
+
+    for (const nodeObject of nodeObjects) {
+      if (nodeObject.data?.content?.dataType === 'moveObject') {
+        const fields = nodeObject.data.content.fields as Record<string, unknown>;
+        // Note: The key isn't stored in the node, we have to map it back from our previous fetch
+        const key = allKeysAndNodeIds.find(item => item.nodeId === nodeObject.data?.objectId)?.key;
+        if (key !== undefined && fields.value) {
+          // Navigate the nested structure: fields.value.fields.value
+          const valueObj = fields.value as Record<string, unknown>;
+          if (valueObj.fields && typeof valueObj.fields === 'object') {
+            const innerFields = valueObj.fields as Record<string, unknown>;
+            if (innerFields.value && typeof innerFields.value === 'string') {
+              const activityId = innerFields.value; // This is the actual 0x2::object::ID
+              console.log('activityId:', activityId);
+              // Validate that this is actually an Activity object
+              try {
+                const activityObj = await suiClient.getObject({
+                  id: activityId,
+                  options: {
+                    showContent: true,
+                    showType: true,
+                  }
+                });
+                
+                if (activityObj.data?.type && activityObj.data.type.includes(getStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
+                  activityIds.push(activityId);
+                  console.log(`Key: ${key.toString()}, Value (ActivityID): ${activityId}`);
+                }
+              } catch (error) {
+                console.warn(`Failed to validate activity object ${activityId}:`, error);
+              }
+            }
           }
-        } catch {
-          // Not a valid object ID, continue searching
-          continue;
         }
       }
     }
+
+    console.log('--- Parsed LinkedTable Content ---');
+    console.log(`Found ${activityIds.length} valid activity IDs`);
     
-    console.log('Extracted activity IDs from LinkedTable:', objectIds);
-    return objectIds;
+    return activityIds;
   } catch (error) {
     console.error('Failed to parse LinkedTable:', error);
     return [];
@@ -341,7 +379,8 @@ export default function UserPage() {
           console.log('Type info:', typeInfo);
           
           // Parse the LinkedTable to extract activity IDs
-          activities = await parseLinkedTableActivities(serializedData, suiClient, currentNetwork);
+          const hexString = toHexString(serializedData);
+          activities = await parseLinkedTableActivities(hexString, suiClient, currentNetwork);
           console.log('Parsed activity IDs from LinkedTable:', activities);
           
           // If no activities found from LinkedTable, try platform object as fallback
@@ -407,7 +446,13 @@ export default function UserPage() {
         for (const activity of formattedActivities) {
           try {
             const activityId = String(activity.id);
-            const activityDetails = await contract.getObject(activityId);
+            const activityDetails = await suiClient.getObject({
+              id: activityId,
+              options: {
+                showContent: true,
+                showType: true,
+              }
+            });
             
             if (activityDetails && activityDetails.data?.content) {
               const content = activityDetails.data.content as Record<string, unknown>;

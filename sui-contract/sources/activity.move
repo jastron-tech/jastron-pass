@@ -118,3 +118,7 @@ public fun is_sale_ended(self: &Activity, ctx: &TxContext): bool {
 public fun has_attendee(self: &Activity, user_profile_id: ID): bool {
     table::contains(&self.attendees, user_profile_id)
 }
+
+public fun get_name(self: &Activity): String {
+    self.name
+}

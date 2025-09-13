@@ -76,9 +76,9 @@ public(package) fun register_organizer(self: &mut Platform, organizer_profile: I
     });
 }
 
-public(package) fun add_activity(self: &mut Platform, activityId: ID) {
-    // Use the current num_activities as the key, and activityId as the value
-    linked_table::push_front(&mut self.activities, self.num_activities, activityId);
+public(package) fun add_activity(self: &mut Platform, activity_id: ID) {
+    // Use the current num_activities as the key, and activity_id as the value
+    linked_table::push_front(&mut self.activities, self.num_activities, activity_id);
     self.num_activities = self.num_activities + 1;
 }
 

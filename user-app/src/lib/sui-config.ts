@@ -26,13 +26,13 @@ export type PackageVersion = 'v1' | 'v2';
 export const JASTRON_PASS = {
   // Package ID from testnet deployment (upgraded)
   testnet: {
-    latestVersion: 'v2',
+    latestVersion: 'v1',
     PACKAGE_ID: {
-      v1: '0x7726d0a797a8d9944fcb4ec37aa74f06f8503c7281af4df22f9b40f445025c2b', // Original package
-      v2: '0xb35a4f4f5b8f90cab5c838fe328df2a6b50ba70026eb4d6e6f21fbf8300a32ff', // Upgraded package
+      v1: '0x823b0da8f5843898cfa2499d3780c6c71f209db654fe4502b82dd5741a45dfa2', // Original package
+      v2: '', // Upgraded package
     },
-    PLATFORM_ID: '0x1ada39ce3ffaceddc70bedc0a8367f27d7b4330d48f2bf79be4a498cf387413d',
-    PUBLISHER_ID: '0x91a045892c4772970ccfd58551d58dc5c3741c369a1469baa0ff0c30af26637a',
+    PLATFORM_ID: '0x7a77b06a665e84c152bb2a932cdf3ff14ae37122ca37a5174b24c5788140e7f4',
+    PUBLISHER_ID: '0x8947ddd424a962c703a02982ece13957037ed406b4d7289b89bdd262a631fc3d',
   },
   mainnet: {
     latestVersion: 'v1',

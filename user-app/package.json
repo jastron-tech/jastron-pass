@@ -9,9 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@mysten/bcs": "^1.8.0",
     "@mysten/dapp-kit": "^0.17.7",
-    "@mysten/sui": "^1.37.6",
-    "@mysten/sui.js": "^0.54.1",
     "@mysten/wallet-adapter-base": "^0.9.0",
     "@mysten/wallet-adapter-react": "^11.0.0",
     "@mysten/wallet-adapter-sui-wallet": "^0.3.0",

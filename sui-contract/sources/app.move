@@ -88,6 +88,7 @@ public fun create_activity(_cap: &OrganizerCap, organizer_profile: &mut Organize
     let activity = activity::new(name, total_supply, ticket_price, organizer_profile, sale_ended_at, ctx);
     let activity_id = activity.get_id();
     platform.add_activity(activity_id);
+    organizer_profile.add_activity(activity_id);
     transfer::public_share_object(activity);
 }
 
