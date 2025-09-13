@@ -82,12 +82,12 @@ const parseConfigData = (data: [number[], string][] | undefined): { fee_bp: numb
 };
 
 const parsePriceLimitData = (data: [number[], string][] | undefined): { price_limit_bp: number } | null => {
-  if (!data || !Array.isArray(data) || data.length < 2) return null;
+  if (!data || !Array.isArray(data) || data.length < 1) return null;
+  
   const priceLimitBp = BigInt(bcs.u64().parse(new Uint8Array(data[0][0] as number[])));
-  const priceLimitBp2 = BigInt(bcs.u64().parse(new Uint8Array(data[1][0] as number[]))); // This is the same value as data[0] in Move
   
   // If both values are 0, it means the rule is not set
-  if (priceLimitBp === BigInt(0) && priceLimitBp2 === BigInt(0)) return null;
+  if (priceLimitBp === BigInt(0)) return null;
   
   return {
     price_limit_bp: Number(priceLimitBp)
@@ -242,60 +242,32 @@ export default function PlatformPage() {
 
 
   const loadTransferPolicyCaps = useCallback(async () => {
-    if (!address || !suiClient) return;
-    
     try {
-      console.log('Loading transfer policy caps...');
+      console.log('Loading transfer policy caps from config...');
       
-      // Get owned objects to find transfer policy caps
-      const objects = await suiClient.getOwnedObjects({
-        owner: address,
-        options: {
-          showContent: true,
-          showType: true,
-        }
-      });
-
-      // Find TransferPolicyCap objects
-      const ticketTransferPolicyCapStruct = getGenericStructType(SUI.STRUCTS.TRANSFER_POLICY_CAP, [getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.TICKET, currentNetwork, 'v1')]);
-      const transferPolicyCapStruct = getSuiStructType(SUI.MODULES.TRANSFER_POLICY, ticketTransferPolicyCapStruct);
+      // Get transfer policy cap and policy IDs from config
+      const ticketTransferPolicyCapId = JASTRON_PASS[currentNetwork].TICKET_TRANSFER_POLICY_CAP_ID;
+      const ticketTransferPolicyId = JASTRON_PASS[currentNetwork].TICKET_TRANSFER_POLICY_ID;
       
-      const capObjects = objects.data.filter(obj => 
-        obj.data?.type?.includes(transferPolicyCapStruct)
-      );
-
-      // Load policy IDs from caps
-      const caps: TransferPolicyCap[] = [];
-      
-      for (const obj of capObjects) {
-        const capId = obj.data?.objectId;
-        if (!capId) continue;
-
-        try {
-          // Get policy ID directly from object content
-          if (obj.data?.content && 'fields' in obj.data.content) {
-            const fields = (obj.data.content as Record<string, unknown>).fields as Record<string, string>;
-            const policyId = fields.policy_id;
-            
-            if (policyId) {
-              caps.push({
-                id: capId,
-                policyId: policyId,
-                type: obj.data?.type || '',
-              });
-            }
-          }
-        } catch (error) {
-          console.warn(`Failed to get policy ID from cap ${capId}:`, error);
-        }
+      // Only add if both IDs are available
+      if (ticketTransferPolicyCapId && ticketTransferPolicyId) {
+        const caps: TransferPolicyCap[] = [{
+          id: ticketTransferPolicyCapId,
+          policyId: ticketTransferPolicyId,
+          type: getSuiStructType(SUI.MODULES.TRANSFER_POLICY, getGenericStructType(SUI.STRUCTS.TRANSFER_POLICY_CAP, [getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.TICKET, currentNetwork, 'v1')])),
+        }];
+        
+        setTransferPolicyCaps(caps);
+        console.log('Transfer policy caps loaded from config:', caps);
+      } else {
+        console.log('Transfer policy cap or policy ID not configured for current network');
+        setTransferPolicyCaps([]);
       }
-      
-      setTransferPolicyCaps(caps);
-      console.log('Transfer policy caps loaded:', caps);
     } catch (error) {
-      console.error('Failed to load transfer policy caps:', error);
+      console.error('Failed to load transfer policy caps from config:', error);
+      setTransferPolicyCaps([]);
     }
-  }, [address, suiClient, currentNetwork]);
+  }, [currentNetwork]);
 
   const loadPolicyConfigs = useCallback(async () => {
     if (!transferPolicyCaps.length) return;
@@ -327,7 +299,7 @@ export default function PlatformPage() {
 
           console.log('Platform fee config:', platformFeeConfig, platformFeeResult);
           console.log('Royalty fee config:', royaltyFeeConfig, royaltyFeeResult);
-          console.log('Resell price limit config:', resellPriceLimitConfig, resellPriceLimitResult);
+          console.log('Resell price limit config:', resellPriceLimitConfig, resellPriceLimitData);
 
           const config: TransferPolicyConfig = {
             policyId: cap.policyId,
@@ -372,8 +344,8 @@ export default function PlatformPage() {
       loadPlatformInfo();
       loadPlatformStats();
       loadTransactionRecords();
-      loadTransferPolicyCaps();
     }
+    loadTransferPolicyCaps();
   }, [connected, address, loadPlatformInfo, loadPlatformStats, loadTransactionRecords, loadTransferPolicyCaps]);
 
   // Load policy configs when transferPolicyCaps change
@@ -447,8 +419,8 @@ export default function PlatformPage() {
         loadPlatformInfo(),
         loadPlatformStats(),
         loadTransactionRecords(),
-        loadTransferPolicyCaps(),
       ]);
+      loadTransferPolicyCaps();
       setResult('平台資料已重新整理');
     } catch (error) {
       setResult(`重新整理失敗: ${error}`);
