@@ -25,6 +25,11 @@ interface OrganizerProfile {
   created_at: number;
 }
 
+interface OrganizerCap {
+  id: string;
+  profile_id: string;
+}
+
 interface Activity {
   id: string;
   total_supply: number;
@@ -48,6 +53,7 @@ export default function OrganizerPage() {
   
   // State
   const [organizerProfile, setOrganizerProfile] = useState<OrganizerProfile | null>(null);
+  const [organizerCap, setOrganizerCap] = useState<OrganizerCap | null>(null);
   const [organizerStats, setOrganizerStats] = useState<OrganizerStats | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,10 +98,17 @@ export default function OrganizerPage() {
         return;
       }
 
-      // Step 3: Extract profile_id from OrganizerCap
+      // Step 3: Extract profile_id from OrganizerCap and save the cap object
       const organizerCapContent = organizerCapObject.data.content as Record<string, unknown>;
       const organizerCapFields = organizerCapContent.fields as Record<string, unknown>;
       const profileId = organizerCapFields.profile_id as string;
+      
+      // Save the OrganizerCap object
+      const cap: OrganizerCap = {
+        id: organizerCapObject.data.objectId,
+        profile_id: profileId
+      };
+      setOrganizerCap(cap);
       
       console.log('Found OrganizerCap with profile_id:', profileId);
 
@@ -278,7 +291,7 @@ export default function OrganizerPage() {
   };
 
   const handleCreateActivity = async () => {
-    if (!connected || !address || !executeTransaction || !organizerProfile) {
+    if (!connected || !address || !executeTransaction || !organizerProfile || !organizerCap) {
       setResult('請先連接錢包並確認主辦方資料');
       return;
     }
@@ -292,8 +305,8 @@ export default function OrganizerPage() {
     try {
       const contract = jastronPassContract;
       const tx = await contract.createActivity(
-        organizerProfile.id, // organizerCap
-        organizerProfile.id, // organizerProfile
+        organizerCap.id, // organizerCap object ID
+        organizerProfile.id, // organizerProfile object ID
         parseInt(activityForm.totalSupply),
         parseInt(activityForm.ticketPrice),
         new Date(activityForm.saleEndedAt).getTime()
