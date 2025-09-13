@@ -21,6 +21,15 @@ export class UserModule extends BaseContract {
     return tx;
   }
 
+  async getUserName(userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_NAME}`,
+      arguments: [tx.object(userProfile)],
+    });
+    return tx;
+  }
+
   async hasUserAttendedActivity(userProfile: string, activityId: string) {
     const tx = this.createTransaction();
     tx.moveCall({
@@ -89,6 +98,15 @@ export class UserModule extends BaseContract {
     const tx = this.createTransaction();
     tx.moveCall({
       target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_TREASURY}`,
+      arguments: [tx.object(userProfile)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
+  async getUserNameValue(userProfile: string) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.USER}::${JASTRON_PASS.FUNCTIONS.USER_GET_NAME}`,
       arguments: [tx.object(userProfile)],
     });
     return this.callReadonlyFunction(tx);

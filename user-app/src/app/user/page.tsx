@@ -15,190 +15,17 @@ import {
   formatBalance,
   createContract,
   JASTRON_PASS,
-  getStructType,
-  getEventType,
-  getPlatformId
+  getJastronPassStructType,
+  getPlatformId,
+  getSuiStructType,
+  getGenericStructType,
+  SUI,
+  getLatestPackageId
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
-import { SuiClient } from '@mysten/sui.js/client';
-import { SuiNetwork } from '@/lib/sui-config';
-import { toHexString } from '@/lib/utils';
-
-// Helper function to parse LinkedTable by fetching dynamic fields
-async function parseLinkedTableActivities(parentNodeId: string, suiClient: SuiClient, currentNetwork: SuiNetwork): Promise<string[]> {
-  try {
-    console.log(`Fetching dynamic fields for parent node: ${parentNodeId}`);
-    
-    const allKeysAndNodeIds: Array<{ key: bigint; nodeId: string }> = [];
-    let cursor: string | null = null;
-    let hasNextPage = true;
-
-    // 1. & 2. Fetch all dynamic fields (handling pagination)
-    while (hasNextPage) {
-      const dynamicFieldsPage = await suiClient.getDynamicFields({
-        parentId: parentNodeId,
-        cursor: cursor,
-      });
-
-      for (const fieldInfo of dynamicFieldsPage.data) {
-        if (fieldInfo.name.type === 'u64') {
-          allKeysAndNodeIds.push({
-            key: BigInt(String(fieldInfo.name.value)), // The key is the u64
-            nodeId: fieldInfo.objectId,      // The ID of the Node object
-          });
-        }
-      }
-
-      cursor = dynamicFieldsPage.nextCursor;
-      hasNextPage = dynamicFieldsPage.hasNextPage;
-    }
-
-    console.log(`Found ${allKeysAndNodeIds.length} entries. Now fetching node objects...`);
-
-    if (allKeysAndNodeIds.length === 0) {
-      console.log('No dynamic fields found for platform object');
-      return [];
-    }
-
-    // 3. Fetch the content of all Node objects in a single multi-get call for efficiency
-    const nodeIds = allKeysAndNodeIds.map(item => item.nodeId);
-    console.log('nodeIds:', nodeIds);
-    const nodeObjects = await suiClient.multiGetObjects({
-      ids: nodeIds,
-      options: { showContent: true },
-    });
-
-    console.log('nodeObjects:', nodeObjects);
-
-    // 4. Parse the Node objects to extract the final values
-    const activityIds: string[] = [];
-
-    for (const nodeObject of nodeObjects) {
-      if (nodeObject.data?.content?.dataType === 'moveObject') {
-        const fields = nodeObject.data.content.fields as Record<string, unknown>;
-        // Note: The key isn't stored in the node, we have to map it back from our previous fetch
-        const key = allKeysAndNodeIds.find(item => item.nodeId === nodeObject.data?.objectId)?.key;
-        if (key !== undefined && fields.value) {
-          // Navigate the nested structure: fields.value.fields.value
-          const valueObj = fields.value as Record<string, unknown>;
-          if (valueObj.fields && typeof valueObj.fields === 'object') {
-            const innerFields = valueObj.fields as Record<string, unknown>;
-            if (innerFields.value && typeof innerFields.value === 'string') {
-              const activityId = innerFields.value; // This is the actual 0x2::object::ID
-              console.log('activityId:', activityId);
-              // Validate that this is actually an Activity object
-              try {
-                const activityObj = await suiClient.getObject({
-                  id: activityId,
-                  options: {
-                    showContent: true,
-                    showType: true,
-                  }
-                });
-                
-                if (activityObj.data?.type && activityObj.data.type.includes(getStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
-                  activityIds.push(activityId);
-                  console.log(`Key: ${key.toString()}, Value (ActivityID): ${activityId}`);
-                }
-              } catch (error) {
-                console.warn(`Failed to validate activity object ${activityId}:`, error);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    console.log('--- Parsed LinkedTable Content ---');
-    console.log(`Found ${activityIds.length} valid activity IDs`);
-    
-    return activityIds;
-  } catch (error) {
-    console.error('Failed to parse LinkedTable:', error);
-    return [];
-  }
-}
-
-// Helper function to get activities from platform object as fallback
-async function getActivitiesFromPlatform(platformId: string, suiClient: SuiClient): Promise<string[]> {
-  try {
-    console.log('Getting platform object directly as fallback:', platformId);
-    
-    // Get the platform object directly
-    const platformObject = await suiClient.getObject({
-      id: platformId,
-      options: {
-        showContent: true,
-        showType: true,
-      }
-    });
-    
-    console.log('Platform object:', platformObject);
-    
-    if (platformObject.data?.content) {
-      const content = platformObject.data.content as Record<string, unknown>;
-      const fields = content.fields as Record<string, unknown>;
-      
-      // Look for activities field in the platform object
-      const activitiesField = fields.activities;
-      console.log('Activities field:', activitiesField);
-      
-      if (activitiesField) {
-        // The activities field is a LinkedTable<u64, ID>
-        // We need to extract the object IDs from the LinkedTable structure
-        const activitiesObj = activitiesField as Record<string, unknown>;
-        console.log('Activities object structure:', activitiesObj);
-        
-        // Try to find object IDs in the LinkedTable structure
-        const objectIds: string[] = [];
-        
-        // Check if it has a fields property with object IDs
-        if (activitiesObj.fields) {
-          const activityFields = activitiesObj.fields as Record<string, unknown>;
-          console.log('Activity fields:', activityFields);
-          
-          // Look for object IDs in the structure
-          for (const [, value] of Object.entries(activityFields)) {
-            if (typeof value === 'string' && value.startsWith('0x')) {
-              objectIds.push(value);
-            } else if (value && typeof value === 'object') {
-              const obj = value as Record<string, unknown>;
-              if (obj.id && typeof obj.id === 'string' && obj.id.startsWith('0x')) {
-                objectIds.push(obj.id);
-              }
-            }
-          }
-        }
-        
-        // Also check if there are any direct object ID references
-        if (activitiesObj.id && typeof activitiesObj.id === 'string' && activitiesObj.id.startsWith('0x')) {
-          objectIds.push(activitiesObj.id);
-        }
-        
-        console.log('Found activity object IDs from platform:', objectIds);
-        return objectIds;
-      }
-      
-      // If no activities field found, check if there are any other fields that might contain activity IDs
-      console.log('All platform fields:', Object.keys(fields));
-      
-      // Look for any field that might contain activity IDs
-      for (const [key, value] of Object.entries(fields)) {
-        if (key.includes('activity') || key.includes('Activity')) {
-          console.log(`Found potential activity field '${key}':`, value);
-        }
-      }
-    }
-    
-    return [];
-  } catch (error) {
-    console.error('Failed to get activities from platform:', error);
-    return [];
-  }
-}
-
+import { toHexString, parseLinkedTableValues } from '@/lib/utils';
 interface UserProfile {
   id: string;
   name: string;
@@ -257,7 +84,7 @@ export default function UserPage() {
 
       // Step 2: Find UserCap object
       const userCapObject = objects.data.find(obj => 
-        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.USER, JASTRON_PASS.STRUCTS.USER_CAP, currentNetwork, 'v1'))
+        obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.USER, JASTRON_PASS.STRUCTS.USER_CAP, currentNetwork, 'v1'))
       );
 
       if (!userCapObject?.data?.content) {
@@ -321,7 +148,7 @@ export default function UserPage() {
 
       // Find ProtectedTicket objects
       const ticketObjects = objects.data.filter(obj => 
-        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.PROTECTED_TICKET, currentNetwork, 'v1'))
+        obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.PROTECTED_TICKET, currentNetwork, 'v1'))
       );
 
       const tickets: Ticket[] = [];
@@ -380,53 +207,13 @@ export default function UserPage() {
           
           // Parse the LinkedTable to extract activity IDs
           const hexString = toHexString(serializedData);
-          activities = await parseLinkedTableActivities(hexString, suiClient, currentNetwork);
-          console.log('Parsed activity IDs from LinkedTable:', activities);
+          const parsedValues = await parseLinkedTableValues(hexString, suiClient);
+          console.log('Parsed activity IDs from LinkedTable:', parsedValues);
           
-          // If no activities found from LinkedTable, try platform object as fallback
-          if (activities.length === 0) {
-            activities = await getActivitiesFromPlatform(platformId, suiClient);
-            console.log('Fallback - got activities from platform object:', activities);
-          }
+          activities = parsedValues.map(value => value.value);
         }
       } catch (error) {
-        console.warn('Failed to get activities from contract function, trying direct platform object:', error);
-        // Fallback to getting activities from platform object directly
-        activities = await getActivitiesFromPlatform(platformId, suiClient);
-        console.log('Fallback - got activities from platform object:', activities);
-      }
-      
-      // If still no activities found, try to get activities from events
-      if (activities.length === 0) {
-        try {
-          console.log('Trying to get activities from events...');
-          const events = await suiClient.queryEvents({
-            query: {
-              MoveEventType: getEventType(JASTRON_PASS.MODULES.APP, JASTRON_PASS.EVENTS.ACTIVITY_CREATED, currentNetwork, 'v1')
-            },
-            limit: 50,
-            order: 'descending'
-          });
-          
-          console.log('Activity events:', events);
-          
-          const activityIds: string[] = [];
-          for (const event of events.data) {
-            if (event.parsedJson && typeof event.parsedJson === 'object') {
-              const eventData = event.parsedJson as Record<string, unknown>;
-              if (eventData.activity_id && typeof eventData.activity_id === 'string') {
-                activityIds.push(eventData.activity_id);
-              }
-            }
-          }
-          
-          if (activityIds.length > 0) {
-            activities = activityIds;
-            console.log('Found activities from events:', activities);
-          }
-        } catch (error) {
-          console.warn('Failed to get activities from events:', error);
-        }
+        console.warn('Failed to get activities from contract function', error);
       }
       
       if (activities && activities.length > 0) {
@@ -457,11 +244,7 @@ export default function UserPage() {
             if (activityDetails && activityDetails.data?.content) {
               const content = activityDetails.data.content as Record<string, unknown>;
               const fields = content.fields as Record<string, unknown>;
-              
-              // Get activity name using the contract function
-              const activityNameResult = await contract.getActivityNameValue(activityId);
-              const activityNameRaw = activityNameResult?.results?.[0]?.returnValues?.[0];
-              const activityName = typeof activityNameRaw === 'string' ? activityNameRaw : '';
+              const activityName = fields.name as string;
               
               const detailedActivity: Activity = {
                 id: activityId,
@@ -597,19 +380,161 @@ export default function UserPage() {
       return;
     }
 
+    if (!userProfile) {
+      setResult('請先註冊用戶資料');
+      return;
+    }
+
     setLoading(true);
+    setResult('正在準備購買票券...');
+    
     try {
-      // For now, we'll show a message that this feature needs more implementation
-      // In a real app, you'd need to get the required objects (platform, transferPolicy, etc.)
-      setResult(`票券購買功能需要更多實作。活動ID: ${activityId}, 價格: ${formatBalance(ticketPrice.toString())} SUI`);
+      console.log('Starting ticket purchase process...');
+      const platformId = getPlatformId(currentNetwork);
       
-      // TODO: Implement actual ticket purchase with required objects
-      // const contract = jastronPassContract;
-      // const txb = await contract.buyTicketFromOrganizer(activityId, payment, platform, transferPolicy, organizerProfile, ticketReceiverProfile);
+      // Step 1: Get required objects
+      setResult('正在獲取所需對象...');
+      
+      // Get platform object
+      const platformObject = await suiClient.getObject({
+        id: platformId,
+        options: { showContent: true, showType: true }
+      });
+      
+      if (!platformObject.data?.content) {
+        throw new Error('無法獲取平台對象');
+      }
+
+      // Get activity object to find organizer profile
+      const activityObject = await suiClient.getObject({
+        id: activityId,
+        options: { showContent: true, showType: true }
+      });
+      
+      if (!activityObject.data?.content) {
+        throw new Error('無法獲取活動對象');
+      }
+      
+      const activityFields = (activityObject.data.content as Record<string, unknown>).fields as Record<string, unknown>;
+      const organizerProfileId = activityFields.organizer_profile_id as string;
+      
+      // Get organizer profile object
+      const organizerProfileObject = await suiClient.getObject({
+        id: organizerProfileId,
+        options: { showContent: true, showType: true }
+      });
+      
+      if (!organizerProfileObject.data?.content) {
+        throw new Error('無法獲取主辦方資料');
+      }
+
+      // Get user profile object
+      const userProfileObject = await suiClient.getObject({
+        id: userProfile.id,
+        options: { showContent: true, showType: true }
+      });
+      
+      if (!userProfileObject.data?.content) {
+        throw new Error('無法獲取用戶資料');
+      }
+
+      // Step 2: Find transfer policy
+      setResult('正在尋找轉移政策...');
+      
+      // Look for transfer policy in owned objects
+      const ownedObjects = await suiClient.getOwnedObjects({
+        owner: address,
+        options: { showContent: true, showType: true }
+      });
+      
+      const ticketTransferPolicyStruct = getGenericStructType(SUI.STRUCTS.TRANSFER_POLICY, [getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.TICKET, currentNetwork, 'v1')]);
+      const transferPolicyStruct = getSuiStructType(SUI.MODULES.TRANSFER_POLICY, ticketTransferPolicyStruct);
+
+      const transferPolicyObject = ownedObjects.data.find(obj => 
+        obj.data?.type?.includes(transferPolicyStruct)
+      );
+      
+      if (!transferPolicyObject?.data?.content) {
+        throw new Error('未找到轉移政策，請先創建轉移政策');
+      }
+
+      // Step 3: Calculate platform fee based on transfer policy
+      setResult('正在計算平台費用...');
+      
+      let platformFee = 0;
+      try {
+        // Use contract to calculate platform fee
+        const contract = jastronPassContract;
+        const platformFeeResult = await contract.calculatePlatformFeeValue(
+          transferPolicyObject.data.objectId,
+          ticketPrice
+        );
+        
+        // Extract platform fee from result
+        const platformFeeData = platformFeeResult?.results?.[0]?.returnValues?.[0];
+        if (platformFeeData && Array.isArray(platformFeeData) && platformFeeData.length > 0) {
+          platformFee = Number(platformFeeData[0]);
+        }
+      } catch (error) {
+        console.warn('Failed to calculate platform fee from policy, using fallback:', error);
+        // Fallback to 5% if calculation fails
+        platformFee = Math.floor(ticketPrice * 0.05);
+      }
+      
+      const totalCost = ticketPrice + platformFee;
+      
+      console.log(`Ticket price: ${ticketPrice}, Platform fee: ${platformFee}, Total: ${totalCost}`);
+      
+      // Show fee breakdown to user
+      setResult(`票券價格: ${ticketPrice.toLocaleString()} MIST, 平台費用: ${platformFee.toLocaleString()} MIST, 總計: ${totalCost.toLocaleString()} MIST`);
+      
+      // Step 4: Create transaction
+      setResult('正在創建交易...');
+      
+      // Import Transaction from @mysten/sui/transactions
+      const { Transaction } = await import('@mysten/sui/transactions');
+      
+      // Create a new transaction block
+      const tx = new Transaction();
+      tx.setGasBudget(500000000); // Set gas budget
+      
+      // Split coins to create payment
+      const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(totalCost)]);
+      
+      // Call buy_ticket_from_organizer function
+      const [coin] = tx.moveCall({
+        target: `${getLatestPackageId(currentNetwork)}::${JASTRON_PASS.MODULES.APP}::${JASTRON_PASS.FUNCTIONS.BUY_TICKET_FROM_ORGANIZER}`,
+        arguments: [
+          tx.object(activityId),
+          payment, // Use the split coin as payment
+          tx.object(platformId),
+          tx.object(transferPolicyObject.data.objectId),
+          tx.object(organizerProfileId),
+          tx.object(userProfile.id),
+        ],
+      });
+      tx.transferObjects([coin], address);
+
+      setResult('正在執行交易，請稍候...');
+      
+      console.log('Executing ticket purchase transaction...');
+      const result = await executeTransaction(tx);
+
+      console.log('Ticket purchase result:', result);
+      setResult(`✅ 票券購買成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh user data
+      setTimeout(() => {
+        loadUserProfile();
+        loadUserTickets();
+        loadAvailableActivities();
+        loadSuiBalance();
+      }, 2000);
       
     } catch (error) {
       console.error('Failed to buy ticket:', error);
-      setResult(`票券購買失敗: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setResult(`❌ 票券購買失敗: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -636,7 +561,7 @@ export default function UserPage() {
         const fields = content.fields as Record<string, unknown>;
         
         // Check if this is an Activity object
-        if (content.type && typeof content.type === 'string' && content.type.includes(getStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
+        if (content.type && typeof content.type === 'string' && content.type.includes(getJastronPassStructType(JASTRON_PASS.MODULES.ACTIVITY, JASTRON_PASS.STRUCTS.ACTIVITY, currentNetwork, 'v1'))) {
           // Get activity name using the contract function
           const activityNameResult = await contract.getActivityNameValue(searchActivityId);
           const activityNameRaw = activityNameResult?.results?.[0]?.returnValues?.[0];
@@ -930,7 +855,7 @@ export default function UserPage() {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div>
                                 <Label className="text-muted-foreground">票價</Label>
-                                <p className="font-medium">{formatBalance(activity.ticket_price.toString())} SUI</p>
+                                <p className="font-medium">{activity.ticket_price.toLocaleString()} MIST</p>
                               </div>
                               <div>
                                 <Label className="text-muted-foreground">剩餘票數</Label>
@@ -964,7 +889,7 @@ export default function UserPage() {
                               disabled={!connected || loading}
                               className="w-full"
                             >
-                              {loading ? '購買中...' : `購買票券 (${formatBalance(activity.ticket_price.toString())} SUI)`}
+                              {loading ? '購買中...' : `購買票券 (${activity.ticket_price.toLocaleString()} MIST + 平台費用)`}
                             </Button>
                           )}
                         </div>

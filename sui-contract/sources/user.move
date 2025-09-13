@@ -3,6 +3,7 @@ module jastron_pass::user;
 use sui::event;
 use sui::table::{Self, Table};
 use std::string::String;
+use sui::kiosk;
 
 //---errors---
 const EUser: u64 = 600;
@@ -18,6 +19,7 @@ public struct UserProfile has key, store {
     id: UID,
     name: String,
     treasury: address,
+    kiosk_id: ID,
     registered_at: u64,
     verified_at: u64,
     activities: Table<ID, u64>, // activity_id -> attended_at
@@ -37,16 +39,20 @@ public struct ActivityAttended has copy, drop {
 }
 
 //---functions---
+#[allow(lint(share_owned, self_transfer))]
 public(package) fun new(
     name: String,
     ctx: &mut TxContext,
 ): (UserProfile, UserCap) {
     let cur_time = tx_context::epoch(ctx);
     let user = tx_context::sender(ctx);
+
+    let (kiosk, kiosk_cap) = kiosk::new(ctx);
     let profile = UserProfile {
         id: object::new(ctx),
         name: name,
         treasury: user,
+        kiosk_id: object::id(&kiosk),
         registered_at: cur_time,
         verified_at: 0,
         activities: table::new(ctx)
@@ -62,6 +68,9 @@ public(package) fun new(
         registered_by: user,
         registered_at: cur_time,
     });
+
+    transfer::public_transfer(kiosk_cap, user);
+    transfer::public_share_object(kiosk);
 
     (profile, cap)
 }

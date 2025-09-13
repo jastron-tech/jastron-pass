@@ -4,6 +4,8 @@ use sui::package;
 use sui::table::{Self, Table};
 use sui::event;
 use sui::linked_table::{Self, LinkedTable};
+use sui::transfer_policy;
+use jastron_pass::ticket::{Ticket};
 
 //---errors---
 const EPlatform: u64 = 300;
@@ -21,6 +23,7 @@ public struct Platform has key {
     registered_organizers: Table<ID, u64>, // organizer_address -> registered_at
     activities: LinkedTable<u64, ID>,
     num_activities: u64,
+    transfer_policy_id: ID,
 }
 
 //---events---
@@ -37,12 +40,12 @@ public struct OrganizerRegistered has copy, drop {
 //---functions---
 
 //---internal functions---
+#[allow(lint(share_owned, self_transfer))]
 fun init(otw: PLATFORM, ctx: &mut TxContext) {
     let platform_publisher = tx_context::sender(ctx);
 
     let publisher = package::claim(otw, ctx);
-    transfer::public_transfer(publisher, platform_publisher);
-    
+    let (policy, policy_cap) = transfer_policy::new<Ticket>(&publisher, ctx);
     let platform = Platform {
         id: object::new(ctx),
         treasury: platform_publisher,
@@ -50,8 +53,13 @@ fun init(otw: PLATFORM, ctx: &mut TxContext) {
         registered_organizers: table::new(ctx),
         activities: linked_table::new(ctx),
         num_activities: 0,
+        transfer_policy_id: object::id(&policy),
     };
+
     transfer::share_object(platform);
+    transfer::public_share_object(policy);
+    transfer::public_transfer(policy_cap, platform_publisher);
+    transfer::public_transfer(publisher, platform_publisher);
 }
 
 public(package) fun register_user(self: &mut Platform, user_profile: ID, ctx: &TxContext) {

@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { toHex } from '@mysten/bcs';
+import { SuiClient } from '@mysten/sui.js/client';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -79,3 +80,121 @@ export function toHexString(byteArray: number[]) {
   const result = '0x' + paddedHex;
   return result;
 }
+
+// Generic function to parse LinkedTable and extract values
+export async function parseLinkedTableValues<T = string>(
+  parentNodeId: string, 
+  suiClient: SuiClient,
+  options?: {
+    // Optional validation function to filter values
+    validateValue?: (value: string, key: bigint) => Promise<boolean> | boolean;
+    // Optional transformation function to convert values
+    transformValue?: (value: string, key: bigint) => T;
+    // Optional key type filter (default: 'u64')
+    keyType?: string;
+  },
+  limit?: number,
+  skip?: number,
+): Promise<Array<{ key: bigint; value: T }>> {
+  try {
+    console.log(`Fetching dynamic fields for parent node: ${parentNodeId}`);
+    
+    const allKeysAndNodeIds: Array<{ key: bigint; nodeId: string }> = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+    const keyType = options?.keyType || 'u64';
+
+    // 1. & 2. Fetch all dynamic fields (handling pagination)
+    let hasSkipCount = 0;
+    while (hasNextPage) {
+      const dynamicFieldsPage = await suiClient.getDynamicFields({
+        parentId: parentNodeId,
+        cursor: cursor,
+      });
+
+      if (limit && allKeysAndNodeIds.length >= limit) {
+        break;
+      }
+      for (const fieldInfo of dynamicFieldsPage.data) {
+        if (fieldInfo.name.type === keyType) {
+          if (skip && hasSkipCount < skip) {
+            hasSkipCount++;
+            continue;
+          }
+          allKeysAndNodeIds.push({
+            key: BigInt(String(fieldInfo.name.value)), // The key
+            nodeId: fieldInfo.objectId,      // The ID of the Node object
+          });
+        }
+      }
+
+      cursor = dynamicFieldsPage.nextCursor;
+      hasNextPage = dynamicFieldsPage.hasNextPage;
+    }
+
+    console.log(`Found ${allKeysAndNodeIds.length} entries. Now fetching node objects...`);
+
+    if (allKeysAndNodeIds.length === 0) {
+      console.log('No dynamic fields found for parent object');
+      return [];
+    }
+
+    // 3. Fetch the content of all Node objects in a single multi-get call for efficiency
+    const nodeIds = allKeysAndNodeIds.map(item => item.nodeId);
+    console.log('nodeIds:', nodeIds);
+    const nodeObjects = await suiClient.multiGetObjects({
+      ids: nodeIds,
+      options: { showContent: true },
+    });
+
+    console.log('nodeObjects:', nodeObjects);
+
+    // 4. Parse the Node objects to extract the final values
+    const results: Array<{ key: bigint; value: T }> = [];
+
+    for (const nodeObject of nodeObjects) {
+      if (nodeObject.data?.content?.dataType === 'moveObject') {
+        const fields = nodeObject.data.content.fields as Record<string, unknown>;
+        // Note: The key isn't stored in the node, we have to map it back from our previous fetch
+        const key = allKeysAndNodeIds.find(item => item.nodeId === nodeObject.data?.objectId)?.key;
+        if (key !== undefined && fields.value) {
+          // Navigate the nested structure: fields.value.fields.value
+          const valueObj = fields.value as Record<string, unknown>;
+          if (valueObj.fields && typeof valueObj.fields === 'object') {
+            const innerFields = valueObj.fields as Record<string, unknown>;
+            if (innerFields.value && typeof innerFields.value === 'string') {
+              const rawValue = innerFields.value; // This is the actual value
+              console.log('Raw value:', rawValue);
+              
+              // Apply validation if provided
+              if (options?.validateValue) {
+                const isValid = await options.validateValue(rawValue, key);
+                if (!isValid) {
+                  console.log(`Value ${rawValue} failed validation, skipping`);
+                  continue;
+                }
+              }
+              
+              // Apply transformation if provided, otherwise use raw value
+              const transformedValue = options?.transformValue 
+                ? options.transformValue(rawValue, key)
+                : (rawValue as T);
+              
+              results.push({ key, value: transformedValue });
+              console.log(`Key: ${key.toString()}, Value: ${rawValue}`);
+            }
+          }
+        }
+      }
+    }
+
+    console.log('--- Parsed LinkedTable Content ---');
+    console.log(`Found ${results.length} valid values`);
+    
+    return results;
+  } catch (error) {
+    console.error('Failed to parse LinkedTable:', error);
+    return [];
+  }
+}
+

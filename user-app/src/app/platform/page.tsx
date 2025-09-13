@@ -12,13 +12,19 @@ import {
   WalletStatus,
   formatAddress,
   formatBalance,
-  getStructType,
+  getJastronPassStructType,
   useContractIds,
   useNetwork,
   JASTRON_PASS,
+  createContract,
+  getSuiStructType,
+  getGenericStructType,
+  getPublisherId,
+  SUI,
 } from '@/lib/sui';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/context/wallet-adapter';
+import { bcs } from '@mysten/bcs';
 
 interface PlatformInfo {
   id: string;
@@ -41,6 +47,54 @@ interface TransactionRecord {
   description: string;
 }
 
+interface TransferPolicyCap {
+  id: string;
+  policyId: string;
+  type: string;
+}
+
+interface TransferPolicyConfig {
+  policyId: string;
+  hasRoyaltyRule: boolean;
+  hasPlatformRule: boolean;
+  hasResellPriceLimitRule: boolean;
+  royaltyFeeBp: number;
+  royaltyMinFee: number;
+  resellPriceLimitBp: number;
+  platformFeeBp: number;
+  platformMinFee: number;
+}
+
+// Helper function to parse config data from Move tuple (u64, u64)
+const parseConfigData = (data: [number[], string][] | undefined): { fee_bp: number; min_fee: number } | null => {
+  if (!data || !Array.isArray(data) || data.length < 2) return null;
+  
+  const feeBp = BigInt(bcs.u64().parse(new Uint8Array(data[0][0] as number[])));
+  const minFee = BigInt(bcs.u64().parse(new Uint8Array(data[1][0] as number[])));
+  
+  // If both values are 0, it means the rule is not set
+  if (feeBp === BigInt(0) && minFee === BigInt(0)) return null;
+  
+  return {
+    fee_bp: Number(feeBp),
+    min_fee: Number(minFee)
+  };
+};
+
+const parsePriceLimitData = (data: [number[], string][] | undefined): { price_limit_bp: number } | null => {
+  if (!data || !Array.isArray(data) || data.length < 2) return null;
+  const priceLimitBp = BigInt(bcs.u64().parse(new Uint8Array(data[0][0] as number[])));
+  const priceLimitBp2 = BigInt(bcs.u64().parse(new Uint8Array(data[1][0] as number[]))); // This is the same value as data[0] in Move
+  
+  // If both values are 0, it means the rule is not set
+  if (priceLimitBp === BigInt(0) && priceLimitBp2 === BigInt(0)) return null;
+  
+  return {
+    price_limit_bp: Number(priceLimitBp)
+  };
+};
+
+
 export default function PlatformPage() {
   const { connected, address, signAndExecuteTransactionBlock, suiClient } = useWalletAdapter();
   const { latestPackageId, platformId, publisherId } = useContractIds();
@@ -56,6 +110,22 @@ export default function PlatformPage() {
   // Platform settings
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
   const [newFeeRate, setNewFeeRate] = useState<string>('');
+  
+  // Transfer policy cap management
+  const [transferPolicyCaps, setTransferPolicyCaps] = useState<TransferPolicyCap[]>([]);
+  const [selectedPolicyCap, setSelectedPolicyCap] = useState<string>('');
+  const [policyConfigs, setPolicyConfigs] = useState<TransferPolicyConfig[]>([]);
+  
+  // Royalty fee rule form
+  const [royaltyFeeBp, setRoyaltyFeeBp] = useState<string>('');
+  const [royaltyMinFee, setRoyaltyMinFee] = useState<string>('');
+  
+  // Resell price limit rule form
+  const [resellPriceLimitBp, setResellPriceLimitBp] = useState<string>('');
+  
+  // Platform fee rule form
+  const [platformFeeBp, setPlatformFeeBp] = useState<string>('');
+  const [platformMinFee, setPlatformMinFee] = useState<string>('');
 
   const loadPlatformInfo = useCallback(async () => {
     if (!address || !suiClient) return;
@@ -75,7 +145,7 @@ export default function PlatformPage() {
 
       // Find Platform object
       const platformObject = objects.data.find(obj => 
-        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.PLATFORM, JASTRON_PASS.STRUCTS.PLATFORM, currentNetwork, 'v1'))
+        obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.PLATFORM, JASTRON_PASS.STRUCTS.PLATFORM, currentNetwork, 'v1'))
       );
 
       if (platformObject?.data?.content) {
@@ -105,7 +175,7 @@ export default function PlatformPage() {
     } finally {
       setLoading(false);
     }
-  }, [address, suiClient]);
+  }, [address, suiClient, currentNetwork]);
 
   const loadPlatformStats = useCallback(async () => {
     if (!suiClient) return;
@@ -128,7 +198,7 @@ export default function PlatformPage() {
       console.error('Failed to load platform stats:', error);
       setResult(`載入平台統計失敗: ${error}`);
     }
-  }, [suiClient, currentNetwork]);
+  }, [suiClient]);
 
   const loadTransactionRecords = useCallback(async () => {
     if (!suiClient) return;
@@ -169,14 +239,149 @@ export default function PlatformPage() {
     }
   }, [suiClient]);
 
+
+
+  const loadTransferPolicyCaps = useCallback(async () => {
+    if (!address || !suiClient) return;
+    
+    try {
+      console.log('Loading transfer policy caps...');
+      
+      // Get owned objects to find transfer policy caps
+      const objects = await suiClient.getOwnedObjects({
+        owner: address,
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+
+      // Find TransferPolicyCap objects
+      const ticketTransferPolicyCapStruct = getGenericStructType(SUI.STRUCTS.TRANSFER_POLICY_CAP, [getJastronPassStructType(JASTRON_PASS.MODULES.TICKET, JASTRON_PASS.STRUCTS.TICKET, currentNetwork, 'v1')]);
+      const transferPolicyCapStruct = getSuiStructType(SUI.MODULES.TRANSFER_POLICY, ticketTransferPolicyCapStruct);
+      
+      const capObjects = objects.data.filter(obj => 
+        obj.data?.type?.includes(transferPolicyCapStruct)
+      );
+
+      // Load policy IDs from caps
+      const caps: TransferPolicyCap[] = [];
+      
+      for (const obj of capObjects) {
+        const capId = obj.data?.objectId;
+        if (!capId) continue;
+
+        try {
+          // Get policy ID directly from object content
+          if (obj.data?.content && 'fields' in obj.data.content) {
+            const fields = (obj.data.content as Record<string, unknown>).fields as Record<string, string>;
+            const policyId = fields.policy_id;
+            
+            if (policyId) {
+              caps.push({
+                id: capId,
+                policyId: policyId,
+                type: obj.data?.type || '',
+              });
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to get policy ID from cap ${capId}:`, error);
+        }
+      }
+      
+      setTransferPolicyCaps(caps);
+      console.log('Transfer policy caps loaded:', caps);
+    } catch (error) {
+      console.error('Failed to load transfer policy caps:', error);
+    }
+  }, [address, suiClient, currentNetwork]);
+
+  const loadPolicyConfigs = useCallback(async () => {
+    if (!transferPolicyCaps.length) return;
+    
+    try {
+      console.log('Loading policy configs...');
+      const contract = createContract(currentNetwork);
+      const configs: TransferPolicyConfig[] = [];
+      
+      for (const cap of transferPolicyCaps) {
+        try {
+          // Get platform fee rule
+          const platformFeeResult = await contract.getPlatformFeeRuleValue(cap.policyId);
+          const platformFeeData = platformFeeResult?.results?.[0]?.returnValues;
+          const platformFeeConfig = parseConfigData(platformFeeData);
+          const hasPlatformRule = !!(platformFeeConfig && platformFeeConfig.fee_bp !== undefined);
+          
+          // Get royalty fee rule
+          const royaltyFeeResult = await contract.getRoyaltyFeeRuleValue(cap.policyId);
+          const royaltyFeeData = royaltyFeeResult?.results?.[0]?.returnValues;
+          const royaltyFeeConfig = parseConfigData(royaltyFeeData);
+          const hasRoyaltyRule = !!(royaltyFeeConfig && royaltyFeeConfig.fee_bp !== undefined);
+          
+          // Get resell price limit rule
+          const resellPriceLimitResult = await contract.getResellPriceLimitRuleValue(cap.policyId);
+          const resellPriceLimitData = resellPriceLimitResult?.results?.[0]?.returnValues;
+          const resellPriceLimitConfig = parsePriceLimitData(resellPriceLimitData);
+          const hasResellPriceLimitRule = !!(resellPriceLimitConfig && resellPriceLimitConfig.price_limit_bp !== undefined);
+
+          console.log('Platform fee config:', platformFeeConfig, platformFeeResult);
+          console.log('Royalty fee config:', royaltyFeeConfig, royaltyFeeResult);
+          console.log('Resell price limit config:', resellPriceLimitConfig, resellPriceLimitResult);
+
+          const config: TransferPolicyConfig = {
+            policyId: cap.policyId,
+            hasRoyaltyRule,
+            hasPlatformRule,
+            hasResellPriceLimitRule,
+            royaltyFeeBp: hasRoyaltyRule ? royaltyFeeConfig!.fee_bp : 0,
+            royaltyMinFee: hasRoyaltyRule ? royaltyFeeConfig!.min_fee : 0,
+            resellPriceLimitBp: hasResellPriceLimitRule ? resellPriceLimitConfig!.price_limit_bp : 10000,
+            platformFeeBp: hasPlatformRule ? platformFeeConfig!.fee_bp : 0,
+            platformMinFee: hasPlatformRule ? platformFeeConfig!.min_fee : 0,
+          };
+          
+          configs.push(config);
+        } catch (error) {
+          console.warn(`Failed to load config for policy ${cap.policyId}:`, error);
+          // Add config with default values if loading fails
+          configs.push({
+            policyId: cap.policyId,
+            hasRoyaltyRule: false,
+            hasPlatformRule: false,
+            hasResellPriceLimitRule: false,
+            royaltyFeeBp: 0,
+            royaltyMinFee: 0,
+            resellPriceLimitBp: 10000,
+            platformFeeBp: 0,
+            platformMinFee: 0,
+          });
+        }
+      }
+      
+      setPolicyConfigs(configs);
+      console.log('Policy configs loaded:', configs);
+    } catch (error) {
+      console.error('Failed to load policy configs:', error);
+    }
+  }, [transferPolicyCaps, currentNetwork]);
+
   // Load platform data
   useEffect(() => {
     if (connected && address) {
       loadPlatformInfo();
       loadPlatformStats();
       loadTransactionRecords();
+      loadTransferPolicyCaps();
     }
-  }, [connected, address, loadPlatformInfo, loadPlatformStats, loadTransactionRecords]);
+  }, [connected, address, loadPlatformInfo, loadPlatformStats, loadTransactionRecords, loadTransferPolicyCaps]);
+
+  // Load policy configs when transferPolicyCaps change
+  useEffect(() => {
+    if (transferPolicyCaps.length > 0) {
+      loadPolicyConfigs();
+    }
+  }, [transferPolicyCaps, loadPolicyConfigs]);
 
   const handleWithdrawFunds = async () => {
     if (!connected || !address || !signAndExecuteTransactionBlock || !platformInfo) {
@@ -242,10 +447,183 @@ export default function PlatformPage() {
         loadPlatformInfo(),
         loadPlatformStats(),
         loadTransactionRecords(),
+        loadTransferPolicyCaps(),
       ]);
       setResult('平台資料已重新整理');
     } catch (error) {
       setResult(`重新整理失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Transfer policy management functions
+  const handleCreateNewPolicy = async () => {
+    if (!connected || !address || !signAndExecuteTransactionBlock) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contract = createContract(currentNetwork);
+      const publisherId = getPublisherId(currentNetwork);
+      const tx = await contract.transferPolicy.newPolicy(publisherId);
+      
+      setResult('正在執行創建轉移政策交易...');
+      const result = await signAndExecuteTransactionBlock({ transaction: tx, chain: currentNetwork });
+      
+      console.log('Create policy result:', result);
+      setResult(`✅ 轉移政策創建成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh transfer policy caps
+      setTimeout(() => {
+        loadTransferPolicyCaps();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to create policy:', error);
+      setResult(`❌ 創建轉移政策失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddRoyaltyFeeRule = async () => {
+    if (!connected || !address || !signAndExecuteTransactionBlock) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    if (!selectedPolicyCap || !royaltyFeeBp || !royaltyMinFee) {
+      setResult('請選擇能力對象並填寫版稅費用規則');
+      return;
+    }
+
+    // Get the corresponding policy ID from the selected cap
+    const selectedCap = transferPolicyCaps.find(cap => cap.id === selectedPolicyCap);
+    if (!selectedCap) {
+      setResult('找不到選中的能力對象');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contract = createContract(currentNetwork);
+      const tx = await contract.transferPolicy.addRoyaltyFeeRule(
+        selectedCap.policyId, // Use the policy ID from the cap
+        selectedPolicyCap,    // Use the cap ID
+        parseInt(royaltyFeeBp),
+        parseInt(royaltyMinFee)
+      );
+      
+      setResult('正在執行添加版稅費用規則交易...');
+      const result = await signAndExecuteTransactionBlock({ transaction: tx, chain: currentNetwork });
+      
+      console.log('Add royalty fee rule result:', result);
+      setResult(`✅ 版稅費用規則添加成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh policy configs
+      setTimeout(() => {
+        loadPolicyConfigs();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to add royalty fee rule:', error);
+      setResult(`❌ 添加版稅費用規則失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddResellPriceLimitRule = async () => {
+    if (!connected || !address || !signAndExecuteTransactionBlock) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    if (!selectedPolicyCap || !resellPriceLimitBp) {
+      setResult('請選擇能力對象並填寫轉售價格限制');
+      return;
+    }
+
+    // Get the corresponding policy ID from the selected cap
+    const selectedCap = transferPolicyCaps.find(cap => cap.id === selectedPolicyCap);
+    if (!selectedCap) {
+      setResult('找不到選中的能力對象');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contract = createContract(currentNetwork);
+      const tx = await contract.transferPolicy.addResellPriceLimitRule(
+        selectedCap.policyId, // Use the policy ID from the cap
+        selectedPolicyCap,    // Use the cap ID
+        parseInt(resellPriceLimitBp)
+      );
+      
+      setResult('正在執行添加轉售價格限制規則交易...');
+      const result = await signAndExecuteTransactionBlock({ transaction: tx, chain: currentNetwork });
+      
+      console.log('Add resell price limit rule result:', result);
+      setResult(`✅ 轉售價格限制規則添加成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh policy configs
+      setTimeout(() => {
+        loadPolicyConfigs();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to add resell price limit rule:', error);
+      setResult(`❌ 添加轉售價格限制規則失敗: ${error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPlatformFeeRule = async () => {
+    if (!connected || !address || !signAndExecuteTransactionBlock) {
+      setResult('請先連接錢包');
+      return;
+    }
+
+    if (!selectedPolicyCap || !platformFeeBp || !platformMinFee) {
+      setResult('請選擇能力對象並填寫平台費用規則');
+      return;
+    }
+
+    // Get the corresponding policy ID from the selected cap
+    const selectedCap = transferPolicyCaps.find(cap => cap.id === selectedPolicyCap);
+    if (!selectedCap) {
+      setResult('找不到選中的能力對象');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contract = createContract(currentNetwork);
+      const tx = await contract.transferPolicy.addPlatformFeeRule(
+        selectedCap.policyId, // Use the policy ID from the cap
+        selectedPolicyCap,    // Use the cap ID
+        parseInt(platformFeeBp),
+        parseInt(platformMinFee)
+      );
+      
+      setResult('正在執行添加平台費用規則交易...');
+      const result = await signAndExecuteTransactionBlock({ transaction: tx, chain: currentNetwork });
+      
+      console.log('Add platform fee rule result:', result);
+      setResult(`✅ 平台費用規則添加成功！交易: ${(result as { digest: string }).digest}`);
+      
+      // Refresh policy configs
+      setTimeout(() => {
+        loadPolicyConfigs();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Failed to add platform fee rule:', error);
+      setResult(`❌ 添加平台費用規則失敗: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -302,6 +680,7 @@ export default function PlatformPage() {
           <TabsTrigger value="dashboard">儀表板</TabsTrigger>
           <TabsTrigger value="treasury">金庫管理</TabsTrigger>
           <TabsTrigger value="settings">平台設定</TabsTrigger>
+          <TabsTrigger value="transfer-policy">轉移政策</TabsTrigger>
           <TabsTrigger value="transactions">交易記錄</TabsTrigger>
         </TabsList>
 
@@ -498,6 +877,289 @@ export default function PlatformPage() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transfer-policy" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>轉移政策管理</CardTitle>
+              <CardDescription>
+                管理票券轉移政策，包括版稅費用、轉售價格限制和平台費用規則
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* TransferPolicyCap Selection */}
+              <div className="space-y-2">
+                <Label className="font-medium">選擇轉移政策能力對象</Label>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedPolicyCap}
+                    onChange={(e) => setSelectedPolicyCap(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">選擇一個能力對象</option>
+                    {transferPolicyCaps.map((cap) => (
+                      <option key={cap.id} value={cap.id}>
+                        {formatAddress(cap.id)} → {formatAddress(cap.policyId)}
+                      </option>
+                    ))}
+                  </select>
+                  <Button 
+                    onClick={loadTransferPolicyCaps} 
+                    disabled={loading}
+                    variant="outline"
+                  >
+                    {loading ? '載入中...' : '重新整理'}
+                  </Button>
+                </div>
+                {selectedPolicyCap && (
+                  <div className="text-sm text-muted-foreground">
+                    能力對象: {formatAddress(selectedPolicyCap)}<br/>
+                    對應政策: {formatAddress(transferPolicyCaps.find(cap => cap.id === selectedPolicyCap)?.policyId || '')}
+                  </div>
+                )}
+              </div>
+
+
+              {/* Create New Policy */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">創建新轉移政策</CardTitle>
+                  <CardDescription>
+                    為發布者創建新的轉移政策
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="font-medium">發布者地址</Label>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {formatAddress(getPublisherId(currentNetwork))}
+                      </Badge>
+                      <Button 
+                        onClick={handleCreateNewPolicy}
+                        disabled={!connected || loading}
+                      >
+                        {loading ? '創建中...' : '創建政策'}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      將使用當前網路的發布者地址創建轉移政策
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Royalty Fee Rule */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">版稅費用規則</CardTitle>
+                  <CardDescription>
+                    設置票券轉售時的版稅費用比例和最低費用
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="royalty-fee-bp">版稅費用比例 (基點)</Label>
+                      <Input
+                        id="royalty-fee-bp"
+                        type="number"
+                        placeholder="250 (2.5%)"
+                        value={royaltyFeeBp}
+                        onChange={(e) => setRoyaltyFeeBp(e.target.value)}
+                        min="0"
+                        max="10000"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        1 基點 = 0.01%，250 基點 = 2.5%
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="royalty-min-fee">最低版稅費用 (MIST)</Label>
+                      <Input
+                        id="royalty-min-fee"
+                        type="number"
+                        placeholder="1000000 (0.001 SUI)"
+                        value={royaltyMinFee}
+                        onChange={(e) => setRoyaltyMinFee(e.target.value)}
+                        min="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        1 SUI = 1,000,000,000 MIST
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleAddRoyaltyFeeRule}
+                    disabled={!connected || loading || !selectedPolicyCap || !royaltyFeeBp || !royaltyMinFee}
+                    className="w-full"
+                  >
+                    {loading ? '添加中...' : '添加版稅費用規則'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Resell Price Limit Rule */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">轉售價格限制規則</CardTitle>
+                  <CardDescription>
+                    設置票券轉售時的最高價格限制
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="resell-price-limit-bp">轉售價格限制 (基點)</Label>
+                    <Input
+                      id="resell-price-limit-bp"
+                      type="number"
+                      placeholder="10000 (100%)"
+                      value={resellPriceLimitBp}
+                      onChange={(e) => setResellPriceLimitBp(e.target.value)}
+                      min="0"
+                      max="10000"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      10000 基點 = 100% (無限制)，5000 基點 = 50% (最高為原價的50%)
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleAddResellPriceLimitRule}
+                    disabled={!connected || loading || !selectedPolicyCap || !resellPriceLimitBp}
+                    className="w-full"
+                  >
+                    {loading ? '添加中...' : '添加轉售價格限制規則'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Platform Fee Rule */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">平台費用規則</CardTitle>
+                  <CardDescription>
+                    設置平台從票券交易中收取的費用比例和最低費用
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="platform-fee-bp">平台費用比例 (基點)</Label>
+                      <Input
+                        id="platform-fee-bp"
+                        type="number"
+                        placeholder="500 (5%)"
+                        value={platformFeeBp}
+                        onChange={(e) => setPlatformFeeBp(e.target.value)}
+                        min="0"
+                        max="10000"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        1 基點 = 0.01%，500 基點 = 5%
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="platform-min-fee">最低平台費用 (MIST)</Label>
+                      <Input
+                        id="platform-min-fee"
+                        type="number"
+                        placeholder="1000000 (0.001 SUI)"
+                        value={platformMinFee}
+                        onChange={(e) => setPlatformMinFee(e.target.value)}
+                        min="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        1 SUI = 1,000,000,000 MIST
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleAddPlatformFeeRule}
+                    disabled={!connected || loading || !selectedPolicyCap || !platformFeeBp || !platformMinFee}
+                    className="w-full"
+                  >
+                    {loading ? '添加中...' : '添加平台費用規則'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Current Policy Caps Display */}
+              {transferPolicyCaps.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">當前轉移政策配置</CardTitle>
+                    <CardDescription>
+                      您擁有的轉移政策能力對象及其配置信息
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {transferPolicyCaps.map((cap) => {
+                        const config = policyConfigs.find(c => c.policyId === cap.policyId);
+                        return (
+                          <div key={cap.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline" className="text-xs">
+                                能力對象: {formatAddress(cap.id)}
+                              </Badge>
+                              <Badge variant={selectedPolicyCap === cap.id ? "default" : "outline"}>
+                                {selectedPolicyCap === cap.id ? "已選擇" : "未選擇"}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              對應政策: {formatAddress(cap.policyId)}
+                            </div>
+                            
+                            {config && (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <span className="font-medium">版稅費用:</span>
+                                  <p className={config.hasRoyaltyRule ? "text-green-600" : "text-gray-400"}>
+                                    {config.hasRoyaltyRule 
+                                      ? `${config.royaltyFeeBp} 基點 (${config.royaltyFeeBp / 100}%)` 
+                                      : "未設置"
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="font-medium">最低版稅:</span>
+                                  <p className={config.hasRoyaltyRule ? "text-green-600" : "text-gray-400"}>
+                                    {config.hasRoyaltyRule 
+                                      ? `${config.royaltyMinFee.toLocaleString()} MIST` 
+                                      : "未設置"
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="font-medium">轉售限制:</span>
+                                  <p className={config.hasResellPriceLimitRule ? "text-green-600" : "text-gray-400"}>
+                                    {config.hasResellPriceLimitRule 
+                                      ? `${config.resellPriceLimitBp} 基點 (${config.resellPriceLimitBp / 100}%)` 
+                                      : "未設置"
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="font-medium">平台費用:</span>
+                                  <p className={config.hasPlatformRule ? "text-green-600" : "text-gray-400"}>
+                                    {config.hasPlatformRule 
+                                      ? `${config.platformFeeBp} 基點 (${config.platformFeeBp / 100}%)` 
+                                      : "未設置"
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

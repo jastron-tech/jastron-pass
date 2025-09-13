@@ -161,6 +161,10 @@ export class JastronPassContract {
     return this.organizer.getOrganizerTreasury(organizerProfile);
   }
 
+  async getOrganizerName(organizerProfile: string) {
+    return this.organizer.getOrganizerName(organizerProfile);
+  }
+
   // User module convenience methods
   async getUserProfileId(userProfile: string) {
     return this.user.getUserProfileId(userProfile);
@@ -168,6 +172,10 @@ export class JastronPassContract {
 
   async getUserTreasury(userProfile: string) {
     return this.user.getUserTreasury(userProfile);
+  }
+
+  async getUserName(userProfile: string) {
+    return this.user.getUserName(userProfile);
   }
 
   async hasUserAttendedActivity(userProfile: string, activityId: string) {
@@ -299,6 +307,23 @@ export class JastronPassContract {
     return this.transferPolicy.calculatePlatformFee(transferPolicy, price);
   }
 
+  async calculatePlatformFeeValue(transferPolicy: string, price: number) {
+    return this.transferPolicy.calculatePlatformFeeValue(transferPolicy, price);
+  }
+
+  // Get rule functions
+  async getPlatformFeeRule(transferPolicy: string) {
+    return this.transferPolicy.getPlatformFeeRule(transferPolicy);
+  }
+
+  async getRoyaltyFeeRule(transferPolicy: string) {
+    return this.transferPolicy.getRoyaltyFeeRule(transferPolicy);
+  }
+
+  async getResellPriceLimitRule(transferPolicy: string) {
+    return this.transferPolicy.getResellPriceLimitRule(transferPolicy);
+  }
+
   // Utility methods (delegated to base contract)
   async getObject(objectId: string) {
     return this.app.getObject(objectId);
@@ -357,6 +382,10 @@ export class JastronPassContract {
     return this.organizer.getOrganizerTreasuryValue(organizerProfile);
   }
 
+  async getOrganizerNameValue(organizerProfile: string) {
+    return this.organizer.getOrganizerNameValue(organizerProfile);
+  }
+
   async hasUserAttendedActivityValue(userProfile: string, activityId: string) {
     return this.user.hasUserAttendedActivityValue(userProfile, activityId);
   }
@@ -375,6 +404,10 @@ export class JastronPassContract {
 
   async getUserTreasuryValue(userProfile: string) {
     return this.user.getUserTreasuryValue(userProfile);
+  }
+
+  async getUserNameValue(userProfile: string) {
+    return this.user.getUserNameValue(userProfile);
   }
 
   async hasAvailableTicketsValue(activity: string) {
@@ -447,6 +480,28 @@ export class JastronPassContract {
 
   async getProtectedTicketInnerOwnerProfileIdValue(protectedTicket: string) {
     return this.ticket.getProtectedTicketInnerOwnerProfileIdValue(protectedTicket);
+  }
+
+  // Transfer policy readonly functions
+  async getPlatformFeeRuleValue(transferPolicy: string) {
+    return this.transferPolicy.getPlatformFeeRuleValue(transferPolicy);
+  }
+
+  async getRoyaltyFeeRuleValue(transferPolicy: string) {
+    return this.transferPolicy.getRoyaltyFeeRuleValue(transferPolicy);
+  }
+
+  async getResellPriceLimitRuleValue(transferPolicy: string) {
+    return this.transferPolicy.getResellPriceLimitRuleValue(transferPolicy);
+  }
+
+  // TransferPolicyCap functions
+  async getTransferPolicyCaps(owner: string) {
+    return this.transferPolicy.getTransferPolicyCaps(owner);
+  }
+
+  async getTransferPolicyFromCap(transferPolicyCap: string) {
+    return this.transferPolicy.getTransferPolicyFromCap(transferPolicyCap);
   }
 }
 

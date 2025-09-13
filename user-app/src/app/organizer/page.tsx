@@ -14,7 +14,7 @@ import {
   formatAddress,
   formatBalance,
 } from '@/lib/sui';
-import { JASTRON_PASS, getStructType, getPlatformId } from '@/lib/sui-config';
+import { JASTRON_PASS, getJastronPassStructType, getPlatformId } from '@/lib/sui-config';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
@@ -93,7 +93,7 @@ export default function OrganizerPage() {
 
       // Step 2: Find OrganizerCap object
       const organizerCapObject = objects.data.find(obj => 
-        obj.data?.type?.includes(getStructType(JASTRON_PASS.MODULES.ORGANIZER, JASTRON_PASS.STRUCTS.ORGANIZER_CAP, currentNetwork, 'v1'))
+        obj.data?.type?.includes(getJastronPassStructType(JASTRON_PASS.MODULES.ORGANIZER, JASTRON_PASS.STRUCTS.ORGANIZER_CAP, currentNetwork, 'v1'))
       );
 
       if (!organizerCapObject?.data?.content) {

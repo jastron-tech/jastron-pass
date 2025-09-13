@@ -1,11 +1,10 @@
 module jastron_pass::ticket_transfer_policy;
 use jastron_pass::ticket::{Ticket};
 use jastron_pass::activity::{Self,Activity};
-use jastron_pass::organizer::{OrganizerProfile};
 use jastron_pass::platform::{Platform};
+use jastron_pass::organizer::{OrganizerProfile};
 use sui::coin::{Self, Coin};
 use sui::sui::SUI;
-use sui::package::{Publisher};
 use sui::transfer_policy::{
     Self,
     TransferPolicy,
@@ -27,12 +26,6 @@ const EOrganizerProfileMismatch: u64 = 7 + ETicketTransferRule;
 const BP_FACTOR: u64 = 10_000; // 1/BP_FACTOR -> 0.01%, BP_FACTOR/BP_FACTOR = 100%
 
 //---functions---
-#[allow(lint(share_owned, self_transfer))]
-public fun new_policy(publisher: &Publisher, ctx: &mut TxContext) {
-    let (policy, policy_cap) = transfer_policy::new<Ticket>(publisher, ctx);
-    transfer::public_share_object(policy);
-    transfer::public_transfer(policy_cap, tx_context::sender(ctx));
-}
 
 //royalty fee rule
 public struct ROYALTY_FEE_RULE has drop {}
@@ -136,4 +129,31 @@ public(package) fun pay_platform_fee(self: &TransferPolicy<Ticket>, request: &mu
     
     transfer::public_transfer(payment, platform.get_treasury());
     transfer_policy::add_receipt(PLATFORM_FEE_RULE {}, request);
+}
+
+public fun get_platform_fee_rule(self: &TransferPolicy<Ticket>): (u64, u64) {
+    if (transfer_policy::has_rule<Ticket, PLATFORM_FEE_RULE>(self)) {
+        let config: &PlatformFeeRuleConfig = transfer_policy::get_rule(PLATFORM_FEE_RULE {}, self);
+        (config.fee_bp, config.min_fee)
+    } else {
+        (0, 0)
+    }
+}
+
+public fun get_royalty_fee_rule(self: &TransferPolicy<Ticket>): (u64, u64) {
+    if (transfer_policy::has_rule<Ticket, ROYALTY_FEE_RULE>(self)) {
+        let config: &RoyaltyFeeRuleConfig = transfer_policy::get_rule(ROYALTY_FEE_RULE {}, self);
+        (config.fee_bp, config.min_fee)
+    } else {
+        (0, 0)
+    }
+}
+
+public fun get_resell_price_limit_rule(self: &TransferPolicy<Ticket>): u64 {
+    if (transfer_policy::has_rule<Ticket, RESELL_PRICE_LIMIT_RULE>(self)) {
+        let config: &ResellPriceLimitRuleConfig = transfer_policy::get_rule(RESELL_PRICE_LIMIT_RULE {}, self);
+        config.price_limit_bp
+    } else {
+        0
+    }
 }

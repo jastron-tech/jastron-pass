@@ -155,12 +155,6 @@ public fun attend_activity(
     activity.add_attendee(user_profile.get_profile_id(), ctx);
 }
 
-public fun create_kiosk(user_profile: &UserProfile, ctx: &mut TxContext) {
-    let (kiosk, kiosk_cap) = kiosk::new(ctx);
-    transfer::public_transfer(kiosk_cap, user_profile.get_treasury());
-    transfer::public_share_object(kiosk);
-}
-
 public fun list_ticket_for_resell(
     kiosk: &mut Kiosk,
     kiosk_cap: &KioskOwnerCap,
