@@ -94,6 +94,15 @@ export class TransferPolicyModule extends BaseContract {
     return tx;
   }
 
+  async calculateRoyaltyFeeValue(transferPolicy: string, price: number) {
+    const tx = this.createTransaction();
+    tx.moveCall({
+      target: `${this.latestPackageId}::${JASTRON_PASS.MODULES.TICKET_TRANSFER_POLICY}::${JASTRON_PASS.FUNCTIONS.CALCULATE_ROYALTY_FEE}`,
+      arguments: [tx.object(transferPolicy), tx.pure.u64(price)],
+    });
+    return this.callReadonlyFunction(tx);
+  }
+
   async calculatePlatformFeeValue(transferPolicy: string, price: number) {
     const tx = this.createTransaction();
     tx.moveCall({

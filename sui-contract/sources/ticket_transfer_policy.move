@@ -36,6 +36,9 @@ public struct RoyaltyFeeRuleConfig has store, drop {
 
 public fun add_royalty_fee_rule(self: &mut TransferPolicy<Ticket>,_cap: &TransferPolicyCap<Ticket>, fee_bp: u64, min_fee: u64) {
     assert!(fee_bp <= BP_FACTOR, EOverBpFactor);
+    if (transfer_policy::has_rule<Ticket, ROYALTY_FEE_RULE>(self)) {
+        transfer_policy::remove_rule<Ticket, ROYALTY_FEE_RULE, RoyaltyFeeRuleConfig>(self, _cap);
+    };
     transfer_policy::add_rule(ROYALTY_FEE_RULE {}, self, _cap, RoyaltyFeeRuleConfig { fee_bp, min_fee });
 }
 
@@ -77,6 +80,9 @@ public struct ResellPriceLimitRuleConfig has store, drop {
 }
 
 public fun add_resell_price_limit_rule(self: &mut TransferPolicy<Ticket>, _cap: &TransferPolicyCap<Ticket>, price_limit_bp: u64) {
+    if (transfer_policy::has_rule<Ticket, RESELL_PRICE_LIMIT_RULE>(self)) {
+        transfer_policy::remove_rule<Ticket, RESELL_PRICE_LIMIT_RULE, ResellPriceLimitRuleConfig>(self, _cap);
+    };
     transfer_policy::add_rule(RESELL_PRICE_LIMIT_RULE {}, self, _cap, ResellPriceLimitRuleConfig { price_limit_bp });
 }
 
@@ -107,6 +113,9 @@ public struct PlatformFeeRuleConfig has store, drop {
 }
 
 public fun add_platform_fee_rule(self: &mut TransferPolicy<Ticket>, _cap: &TransferPolicyCap<Ticket>, fee_bp: u64, min_fee: u64) {
+    if (transfer_policy::has_rule<Ticket, PLATFORM_FEE_RULE>(self)) {
+        transfer_policy::remove_rule<Ticket, PLATFORM_FEE_RULE, PlatformFeeRuleConfig>(self, _cap);
+    };
     transfer_policy::add_rule(PLATFORM_FEE_RULE {}, self, _cap, PlatformFeeRuleConfig { fee_bp, min_fee });
 }
 

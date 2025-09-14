@@ -22,7 +22,7 @@ export const SUI_NETWORKS = {
 export type SuiNetwork = keyof typeof SUI_NETWORKS;
 
 // Contract configuration
-export type PackageVersion = 'v1' | 'v2';
+export type PackageVersion = 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6';
 export const SUI = {
   PACKAGE_ID: '0x2',
   STRUCTS: {
@@ -37,13 +37,14 @@ export const SUI = {
 export const JASTRON_PASS = {
   // Package ID from testnet deployment (upgraded)
   testnet: {
-    latestVersion: 'v5',
+    latestVersion: 'v6',
     PACKAGE_ID: {
       v1: '0x2a8a0e8014614208589a1f3cd35ffe5a7fd42930f6aeee4435e80712a3c62602', // Original package
       v2: '0x1f9bdf3f62acbc67bf123326e93462cd2c3ca1607c6b0aea2cc00249b444af95', // Upgraded package
       v3: '0x37f7193d31d0a06422cc1bd5495a238f651b3108f729a39ddfde6b8a97c78580',
       v4: '0xa686fa7aae5097c0a791845cdfff74278d9d901b24d7a6bb71b6b4d09d2d537a',
-      v5: '0x281f8503d34b52616e5e8077ff2a44f244772b467dbe1ebfec6cbef19ff63b72'
+      v5: '0x281f8503d34b52616e5e8077ff2a44f244772b467dbe1ebfec6cbef19ff63b72',
+      v6: '0xad3340821e8f25ed83ab85d5e0a9b6f9975d55d503852ff9c570f7e2fd0c97b5'
     },
     PLATFORM_ID: '0x6d2c7597c11e1ea3502ed169723c8653a5009eb80bc350c5b232f74d82dbb45d',
     PUBLISHER_ID: '0x8c547b6c90861e9668bc923bb5798a5640b9b1d891f54de2f3db222f5525e55b',
@@ -56,6 +57,10 @@ export const JASTRON_PASS = {
     PACKAGE_ID: {
       v1: '',
       v2: '',
+      v3: '',
+      v4: '',
+      v5: '',
+      v6: '',
     },
     PLATFORM_ID: '',
     PUBLISHER_ID: '',
@@ -68,6 +73,10 @@ export const JASTRON_PASS = {
     PACKAGE_ID: {
       v1: '0x0329932e8d08bf9223f2893dd496fcab6c942d9109ada415b2085170818bdb81',
       v2: '',
+      v3: '',
+      v4: '',
+      v5: '',
+      v6: '',
     },
     PLATFORM_ID: '0x8098f063262e46f4f6d6dc3a44ab470dce1809631f9edb95b3ae17574a27ecf8',
     PUBLISHER_ID: '0x3943d0be7b74fbf383cea1126f87aa76f62336006474cbc2a801869efa351c47',

@@ -35,6 +35,10 @@ interface ListedTicket {
   saleEndedAt: number;
   ticketsSold: number;
   totalSupply: number;
+  royaltyFee: number;
+  platformFee: number;
+  totalFees: number;
+  totalCost: number;
 }
 
 interface KioskInfo {
@@ -239,6 +243,11 @@ export default function KioskPage() {
               // Get ticket price from kiosk using getTicketPrice
               const contract = createContract(currentNetwork);
               let ticketPrice = 0;
+              let royaltyFee = 0;
+              let platformFee = 0;
+              let totalFees = 0;
+              let totalCost = 0;
+              
               try {
                 // Use getTicketPrice directly and execute with suiClient
                 const priceTx = await contract.getTicketPrice(kioskId, ticketId);
@@ -253,6 +262,52 @@ export default function KioskPage() {
                   ticketPrice = Number(bcs.u64().parse(new Uint8Array(priceData[0] as number[])));
                 }
                 console.log(`Ticket price for ${ticketId}:`, ticketPrice);
+                
+                // Calculate fees using transfer policy
+                const transferPolicyId = getTicketTransferPolicyId(currentNetwork);
+                
+                try {
+                  // Calculate royalty fee using transfer policy
+                  const royaltyFeeResult = await contract.calculateRoyaltyFeeValue(transferPolicyId, ticketPrice);
+                  const royaltyFeeData = royaltyFeeResult?.results?.[0]?.returnValues?.[0];
+                  if (royaltyFeeData && Array.isArray(royaltyFeeData) && royaltyFeeData.length > 0) {
+                    royaltyFee = Number(bcs.u64().parse(new Uint8Array(royaltyFeeData[0] as number[])));
+                  }
+                  
+                  // Calculate platform fee using transfer policy
+                  const platformFeeResult = await contract.calculatePlatformFeeValue(transferPolicyId, ticketPrice);
+                  const platformFeeData = platformFeeResult?.results?.[0]?.returnValues?.[0];
+                  if (platformFeeData && Array.isArray(platformFeeData) && platformFeeData.length > 0) {
+                    platformFee = Number(bcs.u64().parse(new Uint8Array(platformFeeData[0] as number[])));
+                  }
+                  
+                  // Calculate total fees and cost
+                  totalFees = royaltyFee + platformFee;
+                  totalCost = ticketPrice + totalFees;
+                  
+                  console.log(`Transfer policy fees for ticket ${ticketId}:`, {
+                    ticketPrice,
+                    royaltyFee,
+                    platformFee,
+                    totalFees,
+                    totalCost
+                  });
+                } catch (error) {
+                  console.warn(`Failed to calculate fees using transfer policy for ticket ${ticketId}:`, error);
+                  // Fallback to hardcoded values if transfer policy calculation fails
+                  royaltyFee = Math.floor(ticketPrice * 0.025);
+                  platformFee = Math.floor(ticketPrice * 0.05);
+                  totalFees = royaltyFee + platformFee;
+                  totalCost = ticketPrice + totalFees;
+                }
+                
+                console.log(`Fees for ticket ${ticketId}:`, {
+                  ticketPrice,
+                  royaltyFee,
+                  platformFee,
+                  totalFees,
+                  totalCost
+                });
               } catch (error) {
                 console.warn(`Failed to get price for ticket ${ticketId}:`, error);
               }
@@ -300,6 +355,10 @@ export default function KioskPage() {
                 saleEndedAt,
                 ticketsSold,
                 totalSupply,
+                royaltyFee,
+                platformFee,
+                totalFees,
+                totalCost,
               });
             }
           }
@@ -750,22 +809,49 @@ export default function KioskPage() {
                                   <Label className="font-medium">活動名稱</Label>
                                   <div className="text-lg font-semibold">{ticket.activityName}</div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                  <div>
-                                    <Label className="text-muted-foreground">原價</Label>
-                                    <p className="font-medium">{ticket.ticketPrice.toLocaleString()} MIST</p>
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <Label className="text-muted-foreground">原價</Label>
+                                      <p className="font-medium">{ticket.ticketPrice.toLocaleString()} MIST</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-muted-foreground">轉售價</Label>
+                                      <p className="font-medium text-green-600">{ticket.price.toLocaleString()} MIST</p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <Label className="text-muted-foreground">轉售價</Label>
-                                    <p className="font-medium text-green-600">{ticket.price.toLocaleString()} MIST</p>
+                                  
+                                  <div className="bg-gray-50 p-3 rounded-lg">
+                                    <Label className="text-sm font-medium text-gray-700">費用明細 (Transfer Policy)</Label>
+                                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Royalty Fee</span>
+                                        <span className="font-medium">{ticket.royaltyFee.toLocaleString()} MIST</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Platform Fee</span>
+                                        <span className="font-medium">{ticket.platformFee.toLocaleString()} MIST</span>
+                                      </div>
+                                      <div className="flex justify-between border-t pt-1 col-span-2">
+                                        <span className="text-gray-600 font-medium">總費用</span>
+                                        <span className="font-bold">{ticket.totalFees.toLocaleString()} MIST</span>
+                                      </div>
+                                      <div className="flex justify-between border-t pt-1 col-span-2">
+                                        <span className="text-gray-800 font-semibold">總成本</span>
+                                        <span className="font-bold text-red-600">{ticket.totalCost.toLocaleString()} MIST</span>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <Label className="text-muted-foreground">票券ID</Label>
-                                    <p className="font-medium text-xs">{formatAddress(ticket.id)}</p>
-                                  </div>
-                                  <div>
-                                    <Label className="text-muted-foreground">活動ID</Label>
-                                    <p className="font-medium text-xs">{formatAddress(ticket.activityId)}</p>
+                                  
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <Label className="text-muted-foreground">票券ID</Label>
+                                      <p className="font-medium text-xs">{formatAddress(ticket.id)}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-muted-foreground">活動ID</Label>
+                                      <p className="font-medium text-xs">{formatAddress(ticket.activityId)}</p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -774,7 +860,7 @@ export default function KioskPage() {
                                 <div className="flex gap-2">
                                   <Input
                                     type="number"
-                                    placeholder="確認購買價格 (MIST)"
+                                    placeholder={`確認購買價格 (總成本: ${ticket.totalCost.toLocaleString()} MIST)`}
                                     value={selectedTicketForPurchase === ticket.id ? purchasePrice : ''}
                                     onChange={(e) => {
                                       setSelectedTicketForPurchase(ticket.id);
@@ -783,12 +869,12 @@ export default function KioskPage() {
                                     className="flex-1"
                                   />
                                   <Button
-                                    onClick={() => handlePurchaseTicket(ticket.id, ticket.price)}
+                                    onClick={() => handlePurchaseTicket(ticket.id, ticket.totalCost)}
                                     disabled={loading || selectedTicketForPurchase !== ticket.id || !purchasePrice}
                                     size="sm"
                                     variant="default"
                                   >
-                                    {loading ? '購買中...' : '購買票券'}
+                                    {loading ? '購買中...' : `購買票券 (${ticket.totalCost.toLocaleString()} MIST)`}
                                   </Button>
                                 </div>
                                 

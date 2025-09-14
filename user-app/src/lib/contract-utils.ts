@@ -324,6 +324,10 @@ export class JastronPassContract {
     return this.transferPolicy.calculatePlatformFee(transferPolicy, price);
   }
 
+  async calculateRoyaltyFeeValue(transferPolicy: string, price: number) {
+    return this.transferPolicy.calculateRoyaltyFeeValue(transferPolicy, price);
+  }
+
   async calculatePlatformFeeValue(transferPolicy: string, price: number) {
     return this.transferPolicy.calculatePlatformFeeValue(transferPolicy, price);
   }
