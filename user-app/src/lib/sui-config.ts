@@ -37,20 +37,20 @@ export const SUI = {
 export const JASTRON_PASS = {
   // Package ID from testnet deployment (upgraded)
   testnet: {
-    latestVersion: 'v6',
+    latestVersion: 'v1',
     PACKAGE_ID: {
-      v1: '0x2a8a0e8014614208589a1f3cd35ffe5a7fd42930f6aeee4435e80712a3c62602', // Original package
-      v2: '0x1f9bdf3f62acbc67bf123326e93462cd2c3ca1607c6b0aea2cc00249b444af95', // Upgraded package
-      v3: '0x37f7193d31d0a06422cc1bd5495a238f651b3108f729a39ddfde6b8a97c78580',
-      v4: '0xa686fa7aae5097c0a791845cdfff74278d9d901b24d7a6bb71b6b4d09d2d537a',
-      v5: '0x281f8503d34b52616e5e8077ff2a44f244772b467dbe1ebfec6cbef19ff63b72',
-      v6: '0xad3340821e8f25ed83ab85d5e0a9b6f9975d55d503852ff9c570f7e2fd0c97b5'
+      v1: '0x574936960aa1a6ea6c0b8fc7495edd21b2eb1ba8e26b515b5b1c56d6f93e8439', 
+      v2: '',
+      v3: '',
+      v4: '',
+      v5: '',
+      v6: '',
     },
-    PLATFORM_ID: '0x6d2c7597c11e1ea3502ed169723c8653a5009eb80bc350c5b232f74d82dbb45d',
-    PUBLISHER_ID: '0x8c547b6c90861e9668bc923bb5798a5640b9b1d891f54de2f3db222f5525e55b',
-    TICKET_TRANSFER_POLICY_ID: '0x5055bfff8da0d53a277bda60b120d1af8f5beea1627d83eea37d23223a783a8b',
-    TICKET_TRANSFER_POLICY_CAP_ID: '0x9dfe04648fbea4c8e59f27535545784112aa6ad03a2405b376571235d8844378',
-    UPGRADE_CAP_ID: '0x29f662d9a02a190374b4cd19f55870ac67e30d6a9f69dc7087f01bb6310dc04a'
+    PLATFORM_ID: '0x3034e9dc58829a0b5f29ea171b55a835ce4f3f23648cc67098471744b6217643',
+    PUBLISHER_ID: '0x096a453c575848bb4887880bbde1ebc4f6a4a0d74a712704c04d30528520de3f',
+    TICKET_TRANSFER_POLICY_ID: '0x785f601f99a74396aa5d582dedc4320ae6d16762d643c0a8526b5929c7a1c67e',
+    TICKET_TRANSFER_POLICY_CAP_ID: '0xf6cea69aa29bc11216d8969ef39dc29d636f92526cd1185693593777fb278859',
+    UPGRADE_CAP_ID: '0x431764cb495cfd2fc6aba5c60bbfbdd24607d61d23adfc991f44c805fe9dc4f0'
   },
   mainnet: {
     latestVersion: 'v1',

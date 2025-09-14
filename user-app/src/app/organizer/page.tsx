@@ -31,23 +31,6 @@ interface OrganizerCap {
   profile_id: string;
 }
 
-interface Activity {
-  id: string;
-  total_supply: number;
-  tickets_sold: number;
-  ticket_price: number;
-  organizer_profile_id: string;
-  sale_ended_at: number;
-  created_at: number;
-  status: 'active' | 'sold_out' | 'ended' | 'cancelled';
-}
-
-interface OrganizerStats {
-  totalActivities: number;
-  totalTicketsSold: number;
-  totalRevenue: string;
-  activeActivities: number;
-}
 
 export default function OrganizerPage() {
   const { connected, address, executeTransaction, suiClient } = useWalletAdapter();
@@ -55,8 +38,6 @@ export default function OrganizerPage() {
   // State
   const [organizerProfile, setOrganizerProfile] = useState<OrganizerProfile | null>(null);
   const [organizerCap, setOrganizerCap] = useState<OrganizerCap | null>(null);
-  const [organizerStats, setOrganizerStats] = useState<OrganizerStats | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [suiBalance, setSuiBalance] = useState<string>('0');
@@ -148,77 +129,6 @@ export default function OrganizerPage() {
     }
   }, [address, suiClient, currentNetwork]);
 
-  const loadOrganizerStats = useCallback(async () => {
-    if (!suiClient) return;
-    
-    try {
-      console.log('Loading organizer stats...');
-      
-      // For demo purposes, create mock stats
-      const mockStats: OrganizerStats = {
-        totalActivities: 8,
-        totalTicketsSold: 156,
-        totalRevenue: '7800000000', // 7.8 SUI in MIST
-        activeActivities: 3,
-      };
-      
-      setOrganizerStats(mockStats);
-      console.log('Organizer stats loaded:', mockStats);
-    } catch (error) {
-      console.error('Failed to load organizer stats:', error);
-      setResult(`載入主辦方統計失敗: ${error}`);
-    }
-  }, [suiClient]);
-
-  const loadActivities = useCallback(async () => {
-    if (!suiClient) return;
-    
-    try {
-      console.log('Loading activities...');
-      
-      // For demo purposes, create mock activities
-      // Use fixed timestamps to avoid hydration mismatch
-      const now = 1700000000000; // Fixed timestamp for consistent SSR
-      const mockActivities: Activity[] = [
-        {
-          id: '0x1',
-          total_supply: 100,
-          tickets_sold: 25,
-          ticket_price: 1000000000, // 1 SUI
-          organizer_profile_id: '0x2',
-          sale_ended_at: now + 7 * 24 * 60 * 60 * 1000, // 7 days
-          created_at: now - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-          status: 'active',
-        },
-        {
-          id: '0x3',
-          total_supply: 50,
-          tickets_sold: 50,
-          ticket_price: 2000000000, // 2 SUI
-          organizer_profile_id: '0x2',
-          sale_ended_at: now + 3 * 24 * 60 * 60 * 1000, // 3 days
-          created_at: now - 5 * 24 * 60 * 60 * 1000, // 5 days ago
-          status: 'sold_out',
-        },
-        {
-          id: '0x4',
-          total_supply: 200,
-          tickets_sold: 81,
-          ticket_price: 500000000, // 0.5 SUI
-          organizer_profile_id: '0x2',
-          sale_ended_at: now - 1 * 24 * 60 * 60 * 1000, // 1 day ago
-          created_at: now - 10 * 24 * 60 * 60 * 1000, // 10 days ago
-          status: 'ended',
-        },
-      ];
-      
-      setActivities(mockActivities);
-      console.log('Activities loaded:', mockActivities);
-    } catch (error) {
-      console.error('Failed to load activities:', error);
-      setResult(`載入活動失敗: ${error}`);
-    }
-  }, [suiClient]);
 
   const loadSuiBalance = useCallback(async () => {
     if (!address || !suiClient) return;
@@ -243,11 +153,9 @@ export default function OrganizerPage() {
   useEffect(() => {
     if (connected && address) {
       loadOrganizerProfile();
-      loadOrganizerStats();
-      loadActivities();
       loadSuiBalance();
     }
-  }, [connected, address, loadOrganizerProfile, loadOrganizerStats, loadActivities, loadSuiBalance]);
+  }, [connected, address, loadOrganizerProfile, loadSuiBalance]);
 
   const handleRegisterOrganizer = async () => {
     console.log('Register organizer - Wallet state:', { 
@@ -355,10 +263,9 @@ export default function OrganizerPage() {
         description: '',
       });
       
-      // Reload activities
+      // Reload organizer profile
       setTimeout(() => {
-        loadActivities();
-        loadOrganizerStats();
+        loadOrganizerProfile();
       }, 2000);
     } catch (error) {
       console.error('Failed to create activity:', error);
@@ -369,35 +276,6 @@ export default function OrganizerPage() {
     }
   };
 
-  const handleRefreshData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        loadOrganizerProfile(),
-        loadOrganizerStats(),
-        loadActivities(),
-      ]);
-      setResult('主辦方資料已重新整理');
-    } catch (error) {
-      setResult(`重新整理失敗: ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getActivityStatus = (activity: Activity): string => {
-    const now = 1700000000000; // Fixed timestamp for consistent SSR
-    if (activity.tickets_sold >= activity.total_supply) return '已售罄';
-    if (activity.sale_ended_at < now) return '已結束';
-    return '進行中';
-  };
-
-  const getActivityStatusColor = (activity: Activity): string => {
-    const now = 1700000000000; // Fixed timestamp for consistent SSR
-    if (activity.tickets_sold >= activity.total_supply) return 'destructive';
-    if (activity.sale_ended_at < now) return 'secondary';
-    return 'default';
-  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -447,213 +325,11 @@ export default function OrganizerPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="dashboard" className="space-y-4">
+      <Tabs defaultValue="create" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="dashboard">儀表板</TabsTrigger>
-          <TabsTrigger value="activities">活動管理</TabsTrigger>
           <TabsTrigger value="create">創建活動</TabsTrigger>
           <TabsTrigger value="profile">主辦方資料</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="dashboard" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">總活動數</CardTitle>
-                <Badge variant="outline">活動</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {organizerStats?.totalActivities || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  已創建活動
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">進行中活動</CardTitle>
-                <Badge variant="outline">活動</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {organizerStats?.activeActivities || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  當前進行中
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">總票券銷售</CardTitle>
-                <Badge variant="outline">票券</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {organizerStats?.totalTicketsSold || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  已售出票券
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">總收入</CardTitle>
-                <Badge variant="outline">SUI</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {organizerStats ? formatBalance(organizerStats.totalRevenue) : '0'} SUI
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  票券銷售收入
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>最近活動</CardTitle>
-              <CardDescription>
-                您最近創建的活動概覽
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {activities.length > 0 ? (
-                <div className="space-y-4">
-                  {activities.slice(0, 3).map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={getActivityStatusColor(activity) as "default" | "destructive" | "secondary" | "outline"}>
-                            {getActivityStatus(activity)}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {formatAddress(activity.id)}
-                          </span>
-                        </div>
-                        <div className="text-sm">
-                          票價: {formatBalance(activity.ticket_price.toString())} SUI | 
-                          已售: {activity.tickets_sold}/{activity.total_supply}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {formatBalance((activity.ticket_price * activity.tickets_sold).toString())} SUI
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          收入
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  暫無活動
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activities" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>活動管理</CardTitle>
-              <CardDescription>
-                管理您創建的所有活動
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Button 
-                  onClick={handleRefreshData} 
-                  disabled={loading}
-                  variant="outline"
-                >
-                  {loading ? '載入中...' : '重新整理活動'}
-                </Button>
-                
-                {activities.length > 0 ? (
-                  <div className="space-y-4">
-                    {activities.map((activity) => (
-                      <Card key={activity.id}>
-                        <CardContent className="pt-4">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Label className="font-medium">活動ID</Label>
-                                  <Badge variant="outline">{formatAddress(activity.id)}</Badge>
-                                </div>
-                                <Badge variant={getActivityStatusColor(activity) as "default" | "destructive" | "secondary" | "outline"}>
-                                  {getActivityStatus(activity)}
-                                </Badge>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-lg font-semibold">
-                                  {formatBalance((activity.ticket_price * activity.tickets_sold).toString())} SUI
-                                </div>
-                                <div className="text-sm text-muted-foreground">收入</div>
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <Label className="text-muted-foreground">票價</Label>
-                                <p className="font-medium">{formatBalance(activity.ticket_price.toString())} SUI</p>
-                              </div>
-                              <div>
-                                <Label className="text-muted-foreground">總供應量</Label>
-                                <p className="font-medium">{activity.total_supply}</p>
-                              </div>
-                              <div>
-                                <Label className="text-muted-foreground">已售出</Label>
-                                <p className="font-medium">{activity.tickets_sold}</p>
-                              </div>
-                              <div>
-                                <Label className="text-muted-foreground">銷售結束</Label>
-                                <p className="font-medium">
-                                  {new Date(activity.sale_ended_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
-                                查看詳情
-                              </Button>
-                              <Button size="sm" variant="outline">
-                                編輯活動
-                              </Button>
-                              {getActivityStatus(activity) === '進行中' && (
-                                <Button size="sm" variant="destructive">
-                                  取消活動
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    暫無活動
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="create" className="space-y-4">
           <Card>
