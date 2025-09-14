@@ -130,7 +130,7 @@ public fun is_bound(self: &Ticket): bool {
 }
 
 public fun get_inner_id(self: &ProtectedTicket): ID {
-    object::uid_to_inner(&self.id)
+    object::uid_to_inner(&self.ticket.id)
 }
 
 public fun get_inner_activity_id(self: &ProtectedTicket): ID {

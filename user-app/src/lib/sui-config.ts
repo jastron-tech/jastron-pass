@@ -37,12 +37,13 @@ export const SUI = {
 export const JASTRON_PASS = {
   // Package ID from testnet deployment (upgraded)
   testnet: {
-    latestVersion: 'v4',
+    latestVersion: 'v5',
     PACKAGE_ID: {
       v1: '0x2a8a0e8014614208589a1f3cd35ffe5a7fd42930f6aeee4435e80712a3c62602', // Original package
       v2: '0x1f9bdf3f62acbc67bf123326e93462cd2c3ca1607c6b0aea2cc00249b444af95', // Upgraded package
       v3: '0x37f7193d31d0a06422cc1bd5495a238f651b3108f729a39ddfde6b8a97c78580',
-      v4: '0xa686fa7aae5097c0a791845cdfff74278d9d901b24d7a6bb71b6b4d09d2d537a'
+      v4: '0xa686fa7aae5097c0a791845cdfff74278d9d901b24d7a6bb71b6b4d09d2d537a',
+      v5: '0x281f8503d34b52616e5e8077ff2a44f244772b467dbe1ebfec6cbef19ff63b72'
     },
     PLATFORM_ID: '0x6d2c7597c11e1ea3502ed169723c8653a5009eb80bc350c5b232f74d82dbb45d',
     PUBLISHER_ID: '0x8c547b6c90861e9668bc923bb5798a5640b9b1d891f54de2f3db222f5525e55b',

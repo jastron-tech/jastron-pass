@@ -22,6 +22,7 @@ import {
 import { AccountSwitcher } from '@/components/account-switcher';
 import { NetworkSwitcher } from '@/components/network-switcher';
 import { useNetwork } from '@/context/network-context';
+import { bcs } from '@mysten/bcs';
 
 interface ListedTicket {
   id: string;
@@ -235,15 +236,23 @@ export default function KioskPage() {
               const ticketId = ((itemFields.id as Record<string, unknown>).id as string);
               const activityId = itemFields.activity_id as string;
               
-              // Get ticket price from kiosk
+              // Get ticket price from kiosk using getTicketPrice
               const contract = createContract(currentNetwork);
               let ticketPrice = 0;
               try {
-                const priceResult = await contract.getTicketPriceValue(kioskId, ticketId);
+                // Use getTicketPrice directly and execute with suiClient
+                const priceTx = await contract.getTicketPrice(kioskId, ticketId);
+                const priceResult = await suiClient.devInspectTransactionBlock({
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  transactionBlock: priceTx as any,
+                  sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
+                });
                 const priceData = priceResult?.results?.[0]?.returnValues?.[0];
+                console.log('Price data:', priceData, priceResult);
                 if (priceData && Array.isArray(priceData) && priceData.length > 0) {
-                  ticketPrice = Number(priceData[0]);
+                  ticketPrice = Number(bcs.u64().parse(new Uint8Array(priceData[0] as number[])));
                 }
+                console.log(`Ticket price for ${ticketId}:`, ticketPrice);
               } catch (error) {
                 console.warn(`Failed to get price for ticket ${ticketId}:`, error);
               }
